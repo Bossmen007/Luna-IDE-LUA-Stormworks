@@ -18,6 +18,7 @@
     "gh-upload": "node tools/gh-publish.mjs upload",
     "gh-pages": "node tools/gh-publish.mjs pages",
     "gh-release": "node tools/gh-publish.mjs release",
+    "gh-meta": "node tools/gh-publish.mjs meta",
     "check-hosting": "electron tools/check-hosting.js",
     "images": "node tools/make-images.mjs",
     "favicon": "node tools/make-favicon.mjs",

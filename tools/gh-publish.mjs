@@ -124,6 +124,22 @@ async function cmdUpload(dirArg) {
   const DIR = path.resolve(ROOT, dirArg || 'publish/github');
   if (!fs.existsSync(DIR)) { console.error('нет папки ' + DIR + ' — сначала npm run github'); process.exit(1); }
 
+  // Пустой репозиторий не принимает дерево файлов: нужен первый коммит.
+  let ref0 = null;
+  try {
+    ref0 = await api(`/repos/${OWNER}/${REPO}/git/ref/heads/main`);
+  } catch (e) {
+    if (e.status !== 404 && e.status !== 409) throw e;
+    await api(`/repos/${OWNER}/${REPO}/contents/.init`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        message: 'Инициализация репозитория',
+        content: Buffer.from('init\n').toString('base64')
+      })
+    });
+    console.log('репозиторий инициализирован первым коммитом');
+  }
+
   const files = walk(DIR).filter((f) => f.rel !== 'PUBLISH.md' || true);
   const total = files.reduce((a, b) => a + b.size, 0);
   console.log('загружаю ' + files.length + ' файлов (' + (total / 1048576).toFixed(1) + ' МБ) в ' + OWNER + '/' + REPO);
@@ -270,14 +286,34 @@ async function cmdRelease() {
   console.log('страница релиза: ' + rel.html_url);
 }
 
+async function cmdMeta() {
+  const homepage = 'https://' + OWNER.toLowerCase() + '.github.io/' + REPO + '/';
+  await api(`/repos/${OWNER}/${REPO}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      description: 'Луна IDE — русский редактор Lua для микроконтроллеров Stormworks: ' +
+        'запуск и отладка скриптов, виртуальный монитор, справочник API, уроки, конструктор интерфейсов. Windows + веб.',
+      homepage
+    })
+  });
+  const topics = ['stormworks', 'lua', 'ide', 'editor', 'russian', 'modding', 'game-development', 'electron'];
+  await api(`/repos/${OWNER}/${REPO}/topics`, {
+    method: 'PUT',
+    body: JSON.stringify({ names: topics })
+  });
+  console.log('описание репозитория и теги обновлены: ' + topics.join(', '));
+  console.log('домашняя страница: ' + homepage);
+}
+
 const [cmd, arg] = process.argv.slice(2);
 try {
   if (cmd === 'upload') await cmdUpload(arg);
   else if (cmd === 'pages') await cmdPages();
   else if (cmd === 'release') await cmdRelease();
+  else if (cmd === 'meta') await cmdMeta();
   else if (cmd === 'status') await cmdStatus();
   else {
-    console.log('Команды: status | upload [папка] | pages | release');
+    console.log('Команды: status | upload [папка] | pages | release | meta');
     console.log('Пример: node tools/gh-publish.mjs upload');
   }
 } catch (e) {

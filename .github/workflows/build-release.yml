@@ -36,7 +36,9 @@ jobs:
         run: npm ci
 
       - name: Собрать установщик (NSIS)
-        run: npx electron-builder --win nsis
+        # --publish never: сборку к релизу прикладывает шаг ниже.
+        # Без этого флага electron-builder сам пробует «опубликовать» и падает без токена.
+        run: npx electron-builder --win nsis --publish never
 
       - name: Дублировать установщик с постоянным именем
         run: copy release\Luna-IDE-Setup-*.exe release\Luna-IDE-Setup.exe
