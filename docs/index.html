@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Луна IDE — русский редактор Lua для Stormworks</title>
+<meta name="description" content="Луна IDE — бесплатная русскоязычная среда для написания, запуска и отладки Lua-скриптов для микроконтроллеров Stormworks. Работает офлайн: настольное приложение для Windows и веб-версия в браузере.">
+<meta name="author" content="СтаричЁк">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Луна IDE — русский редактор Lua для Stormworks">
+<meta property="og:description" content="Пишите, запускайте и отлаживайте Lua-скрипты микроконтроллеров Stormworks на русском. Виртуальный монитор, справочник API, уроки и конструктор интерфейсов.">
+<meta property="og:image" content="hero.png">
+<link rel="icon" type="image/png" href="favicon.png">
+<!--
+  ПЕРЕД ПУБЛИКАЦИЕЙ замените ссылки в блоке LINKS ниже (в самом низу страницы, <script>):
+  itchUrl  — адрес страницы на itch.io
+  webUrl   — адрес веб-версии (Netlify Drop / GitHub Pages)
+  Пока они пустые, кнопки ведут на локальные файлы рядом с этой страницей.
+-->
+<style>
+  :root{
+    --bg:#0e1015; --bg2:#141821; --card:#171c27; --line:#242b3a;
+    --txt:#e6ebf5; --dim:#9aa5bb; --cyan:#4ad0ff; --violet:#9a7bff; --green:#4ad07a;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font:16px/1.6 -apple-system,"Segoe UI",Roboto,Ubuntu,sans-serif}
+  a{color:var(--cyan);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  h1,h2,h3{line-height:1.25;margin:0 0 .5em}
+  h2{font-size:28px;margin-top:0}
+  .muted{color:var(--dim)}
+
+  /* шапка */
+  header.top{position:sticky;top:0;z-index:10;background:rgba(14,16,21,.88);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  header.top .wrap{display:flex;align-items:center;gap:16px;height:60px}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:700;white-space:nowrap}
+  .brand img{width:26px;height:26px}
+  header.top nav{margin-left:auto;display:flex;gap:18px;flex-wrap:wrap}
+  header.top nav a{color:var(--dim);font-size:15px}
+  header.top nav a:hover{color:var(--txt);text-decoration:none}
+
+  /* герой */
+  .hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+  .hero .bg{position:absolute;inset:0;background:url("hero.png") center/cover no-repeat;opacity:.55}
+  .hero .bg::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(90deg,var(--bg) 8%,rgba(14,16,21,.75) 45%,rgba(14,16,21,.35) 100%)}
+  .hero .wrap{position:relative;padding:74px 20px 80px}
+  .hero h1{font-size:clamp(28px,5.2vw,44px);max-width:14em}
+  .hero p.lead{font-size:clamp(16px,2vw,19px);max-width:34em;color:#c8d2e6}
+  .btns{display:flex;gap:14px;flex-wrap:wrap;margin-top:26px}
+  @media(max-width:720px){
+    header.top nav a:not(:last-child){display:none}
+    header.top nav{gap:0}
+    .hero .wrap{padding:52px 20px 56px}
+    section{padding:44px 0}
+  }
+  .btn{display:inline-flex;align-items:center;gap:9px;padding:13px 22px;border-radius:11px;
+    border:1px solid var(--line);background:var(--card);color:var(--txt);font-size:16px;
+    font-weight:600;cursor:pointer;text-decoration:none}
+  .btn:hover{text-decoration:none;border-color:#39435a}
+  .btn.primary{background:linear-gradient(135deg,var(--cyan),var(--violet));
+    color:#0b0e14;border:none}
+  .note{font-size:14px;color:var(--dim);margin-top:14px}
+  .pill{display:inline-block;padding:5px 12px;border:1px solid var(--line);border-radius:999px;
+    font-size:13px;color:var(--dim);background:var(--bg2)}
+
+  section{padding:58px 0;border-bottom:1px solid var(--line)}
+  .grid{display:grid;gap:16px}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:820px){.g3,.g2{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .card h3{font-size:18px;margin-bottom:6px}
+  .card p{margin:0;color:var(--dim);font-size:15px}
+  .ico{font-size:22px;display:block;margin-bottom:10px}
+
+  .shots{display:grid;gap:16px;grid-template-columns:1fr 1fr}
+  @media(max-width:820px){.shots{grid-template-columns:1fr}}
+  .shot{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .shot img{display:block;width:100%;height:auto}
+  .shot figcaption{padding:10px 14px;font-size:14px;color:var(--dim)}
+
+  ol.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:grid;gap:14px}
+  ol.steps li{position:relative;padding-left:52px;min-height:34px}
+  ol.steps li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:0;
+    width:34px;height:34px;border-radius:50%;background:var(--bg2);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--cyan)}
+
+  details{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:14px 18px;margin-bottom:10px}
+  details summary{cursor:pointer;font-weight:600}
+  details p{color:var(--dim);margin:.6em 0 0}
+
+  .cta{background:var(--bg2);text-align:center;border-bottom:none}
+  .cta .btns{justify-content:center}
+  footer{padding:34px 0 50px;color:var(--dim);font-size:14px}
+  code{background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:14px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <span class="brand"><img src="favicon.png" alt="Логотип Луна IDE" width="26" height="26"> Луна&nbsp;IDE</span>
+    <nav>
+      <a href="#about">О программе</a>
+      <a href="#features">Возможности</a>
+      <a href="#shots">Скриншоты</a>
+      <a href="#install">Установка</a>
+      <a href="#faq">Вопросы</a>
+      <a href="#download">Скачать</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="bg" role="img" aria-label="Тёмный интерфейс приборной панели с луной"></div>
+  <div class="wrap">
+    <span class="pill">Версия 1.1.0 · Windows 10/11 · работает офлайн</span>
+    <h1>Редактор Lua для Stormworks — полностью на русском</h1>
+    <p class="lead">Пишите, запускайте и отлаживайте скрипты для микроконтроллеров Stormworks,
+      не зная английского. Реальный интерпретатор Lua 5.3, виртуальный монитор, справочник API,
+      уроки и конструктор интерфейсов — всё внутри одной программы.</p>
+    <div class="btns">
+      <a class="btn primary" id="dlWin" href="#download">⬇ Скачать для Windows</a>
+      <a class="btn" id="dlWeb" href="#download">🌐 Открыть веб-версию</a>
+    </div>
+    <p class="note">Бесплатно. Установщик ~99 МБ · веб-версия ~0,3 МБ. Регистрация не нужна,
+      интернет во время работы не требуется.</p>
+  </div>
+</div>
+
+<section id="about">
+  <div class="wrap">
+    <h2>Что это</h2>
+    <p class="muted" style="max-width:60em">В Stormworks код микроконтроллеров пишут на Lua, а вся
+      документация и сам редактор в игре — на английском. <b>Луна IDE</b> — отдельная программа,
+      которая даёт русскоязычному игроку всё то же самое, но понятным языком: подсказки, уроки,
+      справочник и сообщения об ошибках на русском.</p>
+    <p class="note">Неофициальный инструмент сообщества. Не связан с разработчиками Stormworks.</p>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <h2>Возможности</h2>
+    <div class="grid g3">
+      <div class="card"><span class="ico">▶</span><h3>Реальный Lua 5.3</h3>
+        <p>Скрипты исполняются по-настоящему (движок Fengari): работают <code>onTick()</code>,
+          <code>onDraw()</code>, <code>input</code>, <code>output</code>, <code>property</code>
+          и <code>screen</code>. Бесконечные циклы прерываются автоматически.</p></div>
+      <div class="card"><span class="ico">🖥</span><h3>Виртуальный монитор</h3>
+        <p>Видно результат <code>onDraw()</code>. Реальные размеры мониторов игры (1 блок = 32 px),
+          масштаб, полноэкранный режим, клик по экрану = нажатие сенсора.</p></div>
+      <div class="card"><span class="ico">📖</span><h3>Справочник и уроки на русском</h3>
+        <p>Полное описание API Stormworks и стандартной библиотеки Lua плюс 10 пошаговых уроков —
+          от переменных до тригонометрии приборов.</p></div>
+      <div class="card"><span class="ico">🧩</span><h3>Конструктор интерфейсов</h3>
+        <p>Расставляете кнопки, полосы и текст мышью — программа сама пишет Lua-код для сенсорного
+          экрана. Готовые цветовые темы и копирование стиля одним кликом.</p></div>
+      <div class="card"><span class="ico">🗜</span><h3>Минификатор и лимит 8192</h3>
+        <p>Счётчик символов с предупреждением на 90 % и жёстким ограничением, как в игре.
+          Минификатор сжимает код, показывая, влезает ли результат в лимит.</p></div>
+      <div class="card"><span class="ico">💾</span><h3>Сохранение и обмен</h3>
+        <p>Черновики в браузере, экспорт и импорт файлов <code>.lua</code>, а также ссылка-шаринг,
+          которая при открытии сразу загружает ваш код. Всё локально, без сервера.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="shots">
+  <div class="wrap">
+    <h2>Скриншоты</h2>
+    <div class="shots">
+      <figure class="shot" style="margin:0"><img src="shots/1-editor.png" width="1440" height="900" loading="lazy"
+        alt="Редактор с кодом спидометра и результатом на виртуальном мониторе">
+        <figcaption>Редактор: код слева, живой монитор и консоль справа</figcaption></figure>
+      <figure class="shot" style="margin:0"><img src="shots/3-builder.png" width="1440" height="900" loading="lazy"
+        alt="Конструктор интерфейса: элементы на холсте и готовый Lua-код">
+        <figcaption>Конструктор UI: элементы мышью → готовый код</figcaption></figure>
+      <figure class="shot" style="margin:0"><img src="shots/2-examples.png" width="1440" height="900" loading="lazy"
+        alt="Галерея готовых примеров скриптов">
+        <figcaption>13 готовых примеров: приборы, карта, ПИД, HUD</figcaption></figure>
+      <figure class="shot" style="margin:0"><img src="shots/4-docs.png" width="1440" height="900" loading="lazy"
+        alt="Справочник API на русском языке">
+        <figcaption>Справочник API Stormworks на русском</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap grid g2">
+    <div>
+      <h2>Установка (Windows)</h2>
+      <ol class="steps">
+        <li>Скачайте установщик <code>Luna-IDE-Setup-1.1.0.exe</code>.</li>
+        <li>Запустите его и выберите папку установки. Ярлык появится на рабочем столе.</li>
+        <li>Откройте «Луна IDE», напишите скрипт и нажмите <b>▶ Запустить</b> (или <code>F5</code>).</li>
+      </ol>
+      <p class="note">Windows может показать предупреждение SmartScreen («Неизвестный издатель») —
+        так бывает у программ без платной цифровой подписи. Нажмите «Подробнее» → «Выполнить в любом случае».</p>
+    </div>
+    <div>
+      <h2>Без установки</h2>
+      <p class="muted">Если не хотите ничего ставить — есть веб-версия. Это те же файлы, что и в
+        настольной программе, только открываются в браузере: ничего скачивать и устанавливать не нужно.</p>
+      <div class="btns"><a class="btn" id="dlWeb2" href="#download">🌐 Открыть веб-версию</a></div>
+      <p class="note">В браузере недоступен только <code>async.httpGet</code> (ограничение самого
+        браузера). В настольной версии работает всё.</p>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <h2>Частые вопросы</h2>
+    <details><summary>Это официальная программа Stormworks?</summary>
+      <p>Нет. Это неофициальный инструмент сообщества, не связанный с разработчиками игры.
+        Имена функций API стоит сверять с игрой: официальная документация меняется.</p></details>
+    <details><summary>Нужен ли интернет?</summary>
+      <p>Нет. И настольная, и веб-версия работают полностью офлайн — все библиотеки лежат рядом
+        с программой, данные хранятся на вашем компьютере.</p></details>
+    <details><summary>Почему текст на мониторе нельзя писать по-русски?</summary>
+      <p>Шрифт Stormworks не поддерживает кириллицу: русские надписи на экране превратятся в
+        квадратики. Поэтому весь экранный текст — латиницей, а комментарии в коде и вывод
+        <code>print()</code> в консоли можно писать по-русски.</p></details>
+    <details><summary>Можно ли писать код прямо здесь и перенести его в игру?</summary>
+      <p>Да. Кнопка <b>🗜 Минифицировать</b> сжимает код под лимит игры (8192 символа), а
+        «Экспорт» сохраняет файл <code>.lua</code>, который удобно вставить в редактор Stormworks.</p></details>
+  </div>
+</section>
+
+<section class="cta" id="download">
+  <div class="wrap">
+    <h2>Скачать Луна IDE</h2>
+    <p class="muted">Версия 1.1.0 · Windows 10/11 (x64) · бесплатно</p>
+    <div class="btns">
+      <a class="btn primary" id="dlWin2" href="#download">⬇ Скачать для Windows</a>
+      <a class="btn" id="dlWeb3" href="#download">🌐 Открыть веб-версию</a>
+    </div>
+    <p class="note" id="linkNote"></p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p><b>Луна IDE</b> · автор: СтаричЁк · версия 1.1.0</p>
+    <p>Неофициальный инструмент для игры Stormworks: Build and Rescue. Все права на игру
+      принадлежат её разработчикам.</p>
+  </div>
+</footer>
+
+<script>
+/* ===== ССЫЛКИ =====
+   webUrl    — веб-версия. По умолчанию 'app/index.html' — она лежит ВНУТРИ лендинга,
+               поэтому работает сразу и не зависит от других сайтов.
+   itchUrl   — страница проекта на itch.io (оттуда качают установщик). Можно оставить пусто,
+               если установщик лежит рядом с лендингом.
+   installer — имя файла установщика рядом с лендингом (для своего хостинга).
+               Если файл есть, кнопка скачивания включается автоматически.
+
+   Порядок такой: itchUrl → файл рядом → кнопка приглушена («скоро»). */
+var LINKS = {
+  itchUrl: '',          // например: 'https://starichek.itch.io/luna-ide'
+  releaseUrl: '',       // прямая ссылка на установщик в GitHub Releases (можно не заполнять)
+  webUrl:  'app/index.html',
+  installer: 'Luna-IDE-Setup-1.1.0.exe'   // имя файла в той же папке, что и лендинг
+};
+
+/* На GitHub Pages ссылку на релиз можно не указывать — она определяется сама:
+   https://ПОЛЬЗОВАТЕЛЬ.github.io/РЕПОЗИТОРИЙ/  →
+   https://github.com/ПОЛЬЗОВАТЕЛЬ/РЕПОЗИТОРИЙ/releases/latest/download/Luna-IDE-Setup.exe */
+function detectGitHubRelease() {
+  if (LINKS.releaseUrl) return LINKS.releaseUrl;
+  var m = /^([^.]+)\.github\.io$/i.exec(location.hostname || '');
+  if (!m) return '';
+  var repo = (location.pathname || '').split('/').filter(Boolean)[0];
+  if (!repo) return '';
+  return 'https://github.com/' + m[1] + '/' + repo +
+         '/releases/latest/download/Luna-IDE-Setup.exe';
+}
+
+/* --- веб-версия (работает всегда) --- */
+var webBtns = ['dlWeb', 'dlWeb2', 'dlWeb3'].map(function (id) { return document.getElementById(id); })
+  .filter(Boolean);
+webBtns.forEach(function (el) {
+  el.href = LINKS.webUrl || 'app/index.html';
+  el.target = '_blank';
+  el.rel = 'noopener';
+});
+
+/* --- кнопки скачивания установщика --- */
+var winBtns = ['dlWin', 'dlWin2'].map(function (id) { return document.getElementById(id); })
+  .filter(Boolean);
+var winHtml = winBtns.map(function (el) { return el.innerHTML; });
+var winPrimary = winBtns.map(function (el) { return el.classList.contains('primary'); });
+var note = document.getElementById('linkNote');
+
+function setDownload(url) {
+  winBtns.forEach(function (el, i) {
+    el.removeAttribute('aria-disabled');
+    el.style.cssText = '';
+    el.title = 'Скачать установщик для Windows';
+    el.innerHTML = winHtml[i];
+    if (winPrimary[i]) el.classList.add('primary'); else el.classList.remove('primary');
+    el.href = url;
+  });
+  var heroWeb = document.getElementById('dlWeb');
+  if (heroWeb) heroWeb.classList.remove('primary');
+  if (note) note.textContent = 'Веб-версия открывается сразу в браузере. Установщик для Windows — по кнопке выше.';
+}
+
+function setDownloadSoon() {
+  winBtns.forEach(function (el, i) {
+    el.classList.remove('primary');
+    el.href = '#install';
+    el.style.opacity = '.5';
+    el.style.pointerEvents = 'none';
+    el.style.background = 'transparent';
+    el.setAttribute('aria-disabled', 'true');
+    el.title = 'Установщик ещё не выложен';
+    el.innerHTML = '⬇ Скачать для Windows — скоро';
+  });
+  var heroWeb = document.getElementById('dlWeb');
+  if (heroWeb) heroWeb.classList.add('primary');
+  if (note) note.textContent =
+    'Установщик для Windows ещё не выложен. Веб-версия уже работает — кнопка «Открыть веб-версию».';
+}
+
+if (LINKS.itchUrl) {
+  setDownload(LINKS.itchUrl);
+} else {
+  var gh = detectGitHubRelease();
+  if (gh) {
+    setDownload(gh);               // GitHub Pages: кнопка ведёт на релиз с установщиком
+  } else if (LINKS.installer) {
+    setDownloadSoon();             // сначала осторожный вариант…
+    try {                          // …и включаем кнопку, если файл реально лежит рядом
+      fetch(LINKS.installer, { method: 'HEAD' }).then(function (r) {
+        if (r && r.ok) setDownload(LINKS.installer);
+      }).catch(function () { /* нет файла или открыто как файл — оставляем «скоро» */ });
+    } catch (e) { /* fetch недоступен (file://) — оставляем «скоро» */ }
+  } else {
+    setDownloadSoon();
+  }
+}
+</script>
+</body>
+</html>

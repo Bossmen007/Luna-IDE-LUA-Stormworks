@@ -1,0 +1,18 @@
+# Зависимости
+node_modules/
+
+# Сборки (создаются командами сборки, в репозиторий не нужны)
+dist/
+release/
+publish/hosting/
+publish/itch/
+publish/*.zip
+
+# Исполняемые файлы распространяются через GitHub Releases
+*.exe
+
+# Служебное
+Thumbs.db
+desktop.ini
+.DS_Store
+*.log

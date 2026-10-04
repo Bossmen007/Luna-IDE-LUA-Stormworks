@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Луна IDE — редактор Lua для Stormworks</title>
+<meta name="description" content="Луна IDE — русский редактор Lua для Stormworks: пишите, запускайте и отлаживайте скрипты микроконтроллеров офлайн. Виртуальный монитор, справочник API, уроки и конструктор интерфейсов.">
+<meta name="author" content="СтаричЁк">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="alternate icon" href="favicon.ico">
+<link rel="stylesheet" href="css/libs/codemirror.css">
+<link rel="stylesheet" href="css/libs/foldgutter.css">
+<link rel="stylesheet" href="css/libs/dialog.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="theme-dark">
+
+<header class="topbar">
+  <div class="brand" title="Луна IDE — разработчик: СтаричЁк">🌙 <b>Луна IDE</b> <span class="muted">редактор Lua для Stormworks</span></div>
+  <nav class="tabs">
+    <button data-tab="editor" class="active">Редактор</button>
+    <button data-tab="examples">Примеры</button>
+    <button data-tab="tutorials">Уроки</button>
+    <button data-tab="docs">Справочник</button>
+    <button data-tab="builder">Конструктор UI</button>
+    <button data-tab="settings">Настройки</button>
+  </nav>
+  <div class="top-actions">
+    <button id="btnDonate" class="btn donate" title="Поддержать проект и помочь развитию">💛 Поддержать</button>
+    <button id="btnRun" class="btn primary">▶ Запустить</button>
+    <button id="btnStop" class="btn" disabled>■ Стоп</button>
+  </div>
+  <div class="win-controls" id="winControls">
+    <button id="winMin" title="Свернуть">─</button>
+    <button id="winMax" title="Развернуть">▢</button>
+    <button id="winClose" title="Закрыть">✕</button>
+  </div>
+</header>
+
+<main>
+  <!-- ================= РЕДАКТОР ================= -->
+  <section id="tab-editor" class="tab-panel active">
+    <div class="toolbar">
+      <button id="btnStep" class="btn">⏭ Шаг</button>
+      <span class="sep"></span>
+      <button id="btnMinify" class="btn">🗜 Минифицировать</button>
+      <button id="btnShare" class="btn">🔗 Поделиться</button>
+      <span class="sep"></span>
+      <button id="btnSave" class="btn">💾 Сохранить</button>
+      <button id="btnOpen" class="btn">📂 Мои скрипты</button>
+      <button id="btnExport" class="btn">📤 Экспорт</button>
+      <button id="btnImport" class="btn">📥 Импорт</button>
+      <button id="btnNew" class="btn">✚ Новый</button>
+      <span class="spacer"></span>
+      <span id="limitHint" class="limit-hint"></span>
+      <span id="charCount" class="char-count"></span>
+      <span id="fileStatus" class="muted small"></span>
+    </div>
+
+    <div class="editor-wrap">
+      <div class="editor-col">
+        <textarea id="code" spellcheck="false"></textarea>
+      </div>
+
+      <div class="side-col">
+        <div class="side-tabs">
+          <button data-side="monitor" class="active">🖥 Монитор</button>
+          <button data-side="console">🖨 Консоль</button>
+          <button data-side="io">🔌 Композит</button>
+          <button data-side="props">⚙️ Свойства</button>
+        </div>
+        <div class="side-body">
+          <div data-side="monitor" class="active">
+            <div class="monitor-toolbar">
+              <span class="muted small">Масштаб:</span>
+              <button class="btn tiny" id="monZoomOut" title="Уменьшить вид">−</button>
+              <span id="monZoomLabel" class="zoom-label">100%</span>
+              <button class="btn tiny" id="monZoomIn" title="Увеличить вид">＋</button>
+              <button class="btn tiny" id="monFit" title="Вписать в панель">Вписать</button>
+              <button class="btn tiny" id="mon100" title="Один пиксель экрана = один пиксель изображения">1:1</button>
+              <button class="btn tiny" id="monFull" title="Развернуть монитор на весь экран (выход — Esc)">⛶ Во весь экран</button>
+            </div>
+            <div class="monitor-viewport" id="monitorViewport">
+              <canvas id="monitor" width="160" height="96"></canvas>
+            </div>
+            <div class="monitor-controls">
+              <label class="muted small">Разрешение монитора <span id="monBlocksInfo" class="muted"></span>
+                <select id="selMonSize"></select>
+              </label>
+              <div id="monCustomWrap" class="mon-custom" style="display:none">
+                <input type="number" id="monCustomW" min="8" max="4096" step="32" value="160" title="Ширина, px">
+                <span class="muted">×</span>
+                <input type="number" id="monCustomH" min="8" max="4096" step="32" value="96" title="Высота, px">
+                <button class="btn tiny" id="monCustomApply">Применить</button>
+              </div>
+            </div>
+            <div id="runtimeInfo" class="muted small">Тиков: 0. Клик по монитору — нажатие Q, ПКМ — E (для сенсорных элементов).</div>
+          </div>
+
+          <div data-side="console">
+            <div class="console-head">
+              <span class="muted small">Вывод print() и ошибки</span>
+              <button id="btnClearConsole" class="btn tiny">Очистить</button>
+            </div>
+            <div id="console" class="console"></div>
+          </div>
+
+          <div data-side="io"><div id="io"></div></div>
+
+          <div data-side="props">
+            <button id="btnAddProp" class="btn tiny">＋ Добавить свойство</button>
+            <p class="muted small">Значения доступны скрипту через property.getNumber("Метка") и т.п.</p>
+            <div id="props"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ПРИМЕРЫ ================= -->
+  <section id="tab-examples" class="tab-panel">
+    <div class="page-head">
+      <h2>Примеры скриптов</h2>
+      <input type="search" id="exSearch" class="search" placeholder="Поиск по примерам…">
+    </div>
+    <div id="examplesBody"></div>
+  </section>
+
+  <!-- ================= УРОКИ ================= -->
+  <section id="tab-tutorials" class="tab-panel">
+    <div class="page-head"><h2>Уроки Lua</h2><p class="muted">Пошаговые уроки — от переменных до тригонометрии приборов.</p></div>
+    <div id="tutorialsBody"></div>
+  </section>
+
+  <!-- ================= СПРАВОЧНИК ================= -->
+  <section id="tab-docs" class="tab-panel">
+    <div class="page-head"><h2>Справочник API</h2><p class="muted">Полное описание функций Stormworks и стандартной библиотеки Lua на русском.</p></div>
+    <div id="docsBody"></div>
+  </section>
+
+  <!-- ================= КОНСТРУКТОР ================= -->
+  <section id="tab-builder" class="tab-panel">
+    <div class="page-head"><h2>Конструктор интерфейса</h2><p class="muted">Расставьте элементы мышью — получите готовый код для сенсорного экрана.</p></div>
+    <div id="builderBody"></div>
+  </section>
+
+  <!-- ================= НАСТРОЙКИ ================= -->
+  <section id="tab-settings" class="tab-panel">
+    <div class="page-head"><h2>Настройки</h2></div>
+    <div class="settings-grid">
+      <div class="setting-card">
+        <h3>Оформление</h3>
+        <p class="muted small">Тема интерфейса</p>
+        <div class="row gap">
+          <button class="btn" data-theme="dark">🌙 Тёмная</button>
+          <button class="btn" data-theme="light">☀️ Светлая</button>
+        </div>
+        <label class="setting-row">Размер шрифта кода
+          <input type="number" id="inpFont" min="10" max="24" value="14">
+        </label>
+      </div>
+      <div class="setting-card">
+        <h3>Исполнение</h3>
+        <label class="setting-row">Разрешение монитора
+          <select id="selMonSize2"></select>
+        </label>
+        <label class="setting-row">Лимит инструкций (защита от зависания)
+          <input type="number" id="inpLimit" step="1000000" value="20000000">
+        </label>
+        <p class="muted small">Если скрипт содержит бесконечный цикл, IDE прервёт его после указанного числа шагов.</p>
+        <p class="muted small">Лимит размера скрипта в игре: <b>8192 символа</b>. Учитываются все символы — буквы, знаки, пробелы, переводы строк и комментарии. Счётчик показан в панели редактора.</p>
+      </div>
+      <div class="setting-card">
+        <h3>Поддержать проект</h3>
+        <p class="muted small">Основной способ — <b>ЮMoney</b>, кошелёк <code>4100119229429725</code>. Он уже встроен: кнопка <b>«💛 Поддержать»</b> в шапке открывает окно с благодарностью и переводом.</p>
+        <p class="muted small">Публикуется только номер кошелька — это публичный адрес для переводов, а не карта. Реквизиты карт и личные данные в приложении не хранятся, статистика не собирается.</p>
+        <label class="setting-row">Дополнительная ссылка (необязательно)
+          <input type="url" id="inpDonate" placeholder="Boosty, VK Donut, DonationAlerts…">
+        </label>
+        <div class="row gap">
+          <button class="btn" id="btnDonateOpen">Проверить ссылку</button>
+          <button class="btn" id="btnDonateClear">Убрать</button>
+        </div>
+      </div>
+      <div class="setting-card">
+        <h3>О программе</h3>
+        <p class="muted small">«Луна IDE» — русский редактор Lua для Stormworks. Работает полностью офлайн. Lua исполняется движком Fengari (Lua 5.3), редактор кода — CodeMirror 5.</p>
+        <p class="muted small">Разработчик: <b>СтаричЁк</b>.</p>
+        <p class="muted small">Это неофициальный инструмент, не связанный с разработчиками Stormworks. Имена функций API проверяйте в игре.</p>
+        <button class="btn" id="btnAbout">Об «Луна IDE»</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ================= БИБЛИОТЕКИ ================= -->
+<script src="js/libs/codemirror.js"></script>
+<script src="js/libs/closebrackets.js"></script>
+<script src="js/libs/matchbrackets.js"></script>
+<script src="js/libs/comment.js"></script>
+<script src="js/libs/foldcode.js"></script>
+<script src="js/libs/brace-fold.js"></script>
+<script src="js/libs/foldgutter.js"></script>
+<script src="js/libs/dialog.js"></script>
+<script src="js/libs/searchcursor.js"></script>
+<script src="js/libs/search.js"></script>
+<script src="js/libs/jump-to-line.js"></script>
+<script src="js/libs/lua.js"></script>
+<script src="js/libs/fengari-web.js"></script>
+
+<!-- ================= МОДУЛИ ПРИЛОЖЕНИЯ ================= -->
+<script src="js/minify.js"></script>
+<script src="js/stormworks.js"></script>
+<script src="data/docs-ru.js"></script>
+<script src="data/examples-ru.js"></script>
+<script src="data/tutorials-ru.js"></script>
+<script src="js/uibuilder.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

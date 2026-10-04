@@ -1,0 +1,83 @@
+{
+  "name": "luna-ide",
+  "productName": "Luna IDE",
+  "version": "1.1.0",
+  "description": "Луна IDE — русский редактор Lua для Stormworks: Build and Rescue",
+  "author": "СтаричЁк",
+  "license": "MIT",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "electron .",
+    "icon": "node build/make-icon.mjs",
+    "dist": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --icon=build/icon.ico --app-version=1.1.0 --ignore=\"^/dist\" --ignore=\"^/node_modules\" --ignore=\"^/release\" --ignore=\"^/publish\" --ignore=\"^/_shot\"",
+    "installer": "electron-builder --win nsis",
+    "release-files": "node tools/make-release.mjs",
+    "hosting": "node tools/make-hosting.mjs",
+    "github": "node tools/make-github.mjs",
+    "gh-status": "node tools/gh-publish.mjs status",
+    "gh-upload": "node tools/gh-publish.mjs upload",
+    "gh-pages": "node tools/gh-publish.mjs pages",
+    "gh-release": "node tools/gh-publish.mjs release",
+    "check-hosting": "electron tools/check-hosting.js",
+    "images": "node tools/make-images.mjs",
+    "favicon": "node tools/make-favicon.mjs",
+    "shots": "electron tools/shots.js",
+    "shots-site": "electron tools/shots-site.js",
+    "check-web": "electron tools/check-web.js"
+  },
+  "devDependencies": {
+    "electron": "^41.0.0",
+    "@electron/packager": "^18.3.6",
+    "electron-builder": "^25.1.8",
+    "png-to-ico": "^2.1.8"
+  },
+  "build": {
+    "appId": "ru.starichek.luna-ide",
+    "productName": "Luna IDE",
+    "copyright": "© СтаричЁк",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "index.html",
+      "favicon.png",
+      "favicon.ico",
+      "preload.js",
+      "electron-main.js",
+      "css/**/*",
+      "js/**/*",
+      "data/**/*",
+      "build/icon.png",
+      "README.md",
+      "SPEC.md"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Луна IDE",
+      "artifactName": "Luna-IDE-Setup-${version}.exe",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerLanguages": [
+        "ru_RU"
+      ],
+      "multiLanguageInstaller": false,
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

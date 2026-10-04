@@ -1,0 +1,58 @@
+# Автосборка установщика Луна IDE.
+#
+# Как пользоваться (без установки git, прямо в браузере):
+#   1. Открыть репозиторий → вкладка «Releases» → «Draft a new release».
+#   2. Указать тег (например v1.1.0) и нажать «Publish release».
+#   3. Этот workflow соберёт .exe и сам приложит его к релизу.
+#
+# Файл Luna-IDE-Setup.exe (без версии в имени) нужен, чтобы ссылка
+# .../releases/latest/download/Luna-IDE-Setup.exe никогда не менялась —
+# именно её использует страница проекта.
+
+name: Сборка установщика
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:        # можно запустить вручную: Actions → Run workflow
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Получить код
+        uses: actions/checkout@v4
+
+      - name: Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Установить зависимости
+        run: npm ci
+
+      - name: Собрать установщик (NSIS)
+        run: npx electron-builder --win nsis
+
+      - name: Дублировать установщик с постоянным именем
+        run: copy release\Luna-IDE-Setup-*.exe release\Luna-IDE-Setup.exe
+
+      - name: Приложить файлы к релизу
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/Luna-IDE-Setup.exe
+            release/Luna-IDE-Setup-*.exe
+
+      - name: Сохранить установщик как артефакт (для ручного запуска)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Luna-IDE-Setup
+          path: release/Luna-IDE-Setup.exe
+          retention-days: 14
