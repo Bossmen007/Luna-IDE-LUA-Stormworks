@@ -95,6 +95,16 @@ async function pool(items, limit, worker) {
 
 // ---------------- команды ----------------
 
+// выдержка из CHANGELOG.md для указанной версии (для описания релиза)
+function changelogFor(version) {
+  try {
+    const txt = fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8');
+    const parts = txt.split(/\n(?=##\s)/);
+    const sec = parts.find((p) => p.trim().startsWith('## v' + version));
+    return sec ? sec.split('\n').slice(1).join('\n').trim() : '';
+  } catch (e) { return ''; }
+}
+
 async function cmdStatus() {
   const repo = await api(`/repos/${OWNER}/${REPO}`);
   console.log('репозиторий: ' + repo.full_name + '  (' + (repo.private ? 'приватный' : 'публичный') + ')');
@@ -224,14 +234,22 @@ async function cmdRelease() {
   const exe = path.join(ROOT, 'release', `Luna-IDE-Setup-${VERSION}.exe`);
   if (!fs.existsSync(exe)) { console.error('нет установщика: ' + exe + ' — сначала npm run installer'); process.exit(1); }
 
+  const chlog = changelogFor(VERSION);
   const notes = [
     '**Луна IDE ' + VERSION + '** — русский редактор Lua для Stormworks.',
     '',
-    '- Установщик для Windows 10/11 (x64), ~99 МБ.',
-    '- Веб-версия: https://' + OWNER.toLowerCase() + '.github.io/' + REPO + '/',
-    '- Внимание: Windows может предупредить SmartScreen («Неизвестный издатель») —',
-    '  цифровой подписи нет. Нажмите «Подробнее» → «Выполнить в любом случае».'
-  ].join('\n');
+    '📣 Telegram-канал (новости и обновления): https://t.me/luna_ide',
+    '',
+    chlog ? '## Что нового\n\n' + chlog : '',
+    '',
+    '## Скачать',
+    '- **Установщик** для Windows 10/11 (x64), ~99 МБ — файл `Luna-IDE-Setup.exe` ниже.',
+    '- **Веб-версия** (без установки): https://' + OWNER.toLowerCase() + '.github.io/' + REPO + '/app/',
+    '- **Страница проекта**: https://' + OWNER.toLowerCase() + '.github.io/' + REPO + '/',
+    '',
+    '> Windows при первом запуске покажет предупреждение SmartScreen («Неизвестный издатель») —',
+    '> цифровой подписи нет. Нажмите «Подробнее» → «Выполнить в любом случае».'
+  ].filter(Boolean).join('\n');
 
   let rel;
   try {
@@ -292,7 +310,8 @@ async function cmdMeta() {
     method: 'PATCH',
     body: JSON.stringify({
       description: 'Луна IDE — русский редактор Lua для микроконтроллеров Stormworks: ' +
-        'запуск и отладка скриптов, виртуальный монитор, справочник API, уроки, конструктор интерфейсов. Windows + веб.',
+        'запуск и отладка скриптов, виртуальный монитор, справочник API, уроки, конструктор экранов ' +
+        'и автоопределение сигналов композита. Windows + веб. Telegram: https://t.me/luna_ide',
       homepage
     })
   });

@@ -20,7 +20,7 @@ const FILES = [
   'index.html', 'favicon.png', 'favicon.ico', 'favicon-32.png',
   'electron-main.js', 'preload.js',
   'package.json', 'package-lock.json',
-  'start.bat', 'README.md', 'SPEC.md', 'DEV-JOURNAL.md',
+  'start.bat', 'README.md', 'SPEC.md', 'DEV-JOURNAL.md', 'CHANGELOG.md',
   'LICENSE', '.gitignore'
 ];
 const DIRS = ['css', 'js', 'data', 'build', 'tools', '.github'];

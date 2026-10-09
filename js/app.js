@@ -119,6 +119,7 @@
   var DEVELOPER = 'СтаричЁк';
   var YOOMONEY_WALLET = '4100119229429725';
   var YOOMONEY_URL = 'https://yoomoney.ru/to/' + YOOMONEY_WALLET;
+  var TELEGRAM_URL = 'https://t.me/luna_ide';
 
   function syncDonateField() {
     var url = settings.donateUrl || '';
@@ -169,6 +170,9 @@
       '<button class="btn small" id="ymCopy">Скопировать номер</button></div>' +
       '<p class="muted small">Переведите любую сумму на кошелёк — или откройте страницу перевода одной кнопкой.</p>' +
       '<button class="btn primary" id="ymGo">Перевести на ЮMoney</button>' +
+      '<hr class="donate-sep"><h4>Новости проекта</h4>' +
+      '<p class="muted small">Обновления, новые уроки и разборы скриптов — в Telegram-канале «Луна IDE».</p>' +
+      '<button class="btn" id="tgGo">✈️ Открыть Telegram-канал</button>' +
       (extra
         ? '<hr class="donate-sep"><h4>Другие способы</h4><button class="btn" id="donExtra">Открыть ссылку поддержки</button>'
         : '');
@@ -177,6 +181,8 @@
     if (copyBtn) copyBtn.onclick = function () { copyText(YOOMONEY_WALLET, copyBtn); };
     var go = back.querySelector('#ymGo');
     if (go) go.onclick = function () { openUrl(YOOMONEY_URL); };
+    var tg = back.querySelector('#tgGo');
+    if (tg) tg.onclick = function () { openUrl(TELEGRAM_URL); };
     var ex = back.querySelector('#donExtra');
     if (ex) ex.onclick = function () { openUrl(extra); };
     return back;
@@ -497,11 +503,70 @@
     if (!settings.io || !settings.io.length) settings.io = defaultIO();
     el.io.innerHTML =
       '<div class="io-head"><span class="io-head-title">Сигналы</span>' +
+      '<button class="btn small" id="ioScan" title="Найти input.getNumber/getBool и output.setNumber/setBool в коде">⟳ Из кода</button>' +
       '<button class="btn small" id="ioAdd">＋ Добавить</button></div>' +
       '<div id="ioList" class="io-list"></div>' +
-      '<p class="muted small">Входы задаются вручную — число или галочка. Выходы создайте, чтобы следить за сигналами из скрипта. Каналы 1–32.</p>';
+      '<p class="muted small">Сигналы находятся в коде кнопкой «Из кода» (или задаются вручную). Каналы 1–32. Название — только подпись в IDE, код оно не меняет.</p>' +
+      '<div class="io-head" style="margin-top:10px"><span class="io-head-title">Локальные переменные</span></div>' +
+      '<div id="ioLocals" class="io-list"><p class="muted small">Нажмите «Из кода» — покажем объявленные <code>local</code> (только для справки).</p></div>';
+    $('ioScan').onclick = scanCodeForIO;
     $('ioAdd').onclick = openAddIO;
     renderIOList();
+  }
+
+  // разбор кода: входы input.getNumber/getBool, выходы output.setNumber/setBool,
+  // названия из конструкций local ИМЯ = input.getNumber(N). Ручные сигналы сохраняются.
+  function scanCodeForIO() {
+    var code = cm ? cm.getValue() : '';
+    var names = {}, m, re;
+    re = /(?:local\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*input\s*\.\s*(getNumber|getBool)\s*\(\s*(\d+)\s*\)/g;
+    while ((m = re.exec(code))) names['in' + (m[2] === 'getBool' ? 'bool' : 'num') + m[3]] = m[1];
+
+    var detected = [], seen = {};
+    re = /input\s*\.\s*(getNumber|getBool)\s*\(\s*(\d+)\s*\)/g;
+    while ((m = re.exec(code))) {
+      var ty = m[1] === 'getBool' ? 'bool' : 'num', ch = +m[2];
+      if (ch < 1 || ch > 32) continue;
+      var k = 'in' + ty + ch; if (seen[k]) continue; seen[k] = 1;
+      detected.push({ dir: 'in', type: ty, ch: ch });
+    }
+    re = /output\s*\.\s*(setNumber|setBool)\s*\(\s*(\d+)/g;
+    while ((m = re.exec(code))) {
+      var ty2 = m[1] === 'setBool' ? 'bool' : 'num', ch2 = +m[2];
+      if (ch2 < 1 || ch2 > 32) continue;
+      var k2 = 'out' + ty2 + ch2; if (seen[k2]) continue; seen[k2] = 1;
+      detected.push({ dir: 'out', type: ty2, ch: ch2 });
+    }
+
+    var result = (settings.io || []).filter(function (r) { return !r.auto; });
+    detected.forEach(function (f) {
+      var codeName = (f.dir === 'in') ? names['in' + f.type + f.ch] : null;
+      var existing = null;
+      result.forEach(function (r) { if (r.dir === f.dir && r.type === f.type && r.ch === f.ch) existing = r; });
+      if (existing) { if (codeName) existing.name = codeName; return; }
+      var prev = null;
+      (settings.io || []).forEach(function (r) { if (r.dir === f.dir && r.type === f.type && r.ch === f.ch && !r.auto) prev = r; });
+      var name = codeName || (prev && prev.name) || ((f.dir === 'in' ? 'Вход ' : 'Выход ') + f.ch);
+      result.push({ dir: f.dir, type: f.type, ch: f.ch, name: name, auto: true });
+    });
+    settings.io = result;
+    saveJSON(SETTINGS_KEY, settings);
+    renderIOList();
+    renderLocals(code);
+    if (el.io && cm) conInfo('Из кода найдено сигналов: ' + detected.length + '.');
+  }
+
+  function renderLocals(code) {
+    var box = $('ioLocals'); if (!box) return;
+    var names = [], seen = {}, m;
+    var re = /\blocal\s+([A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*)/g;
+    while ((m = re.exec(code))) {
+      m[1].split(',').forEach(function (n) {
+        n = n.trim(); if (!n || seen[n]) return; seen[n] = 1; names.push(n);
+      });
+    }
+    if (!names.length) { box.innerHTML = '<p class="muted small">local-переменных не найдено.</p>'; return; }
+    box.innerHTML = '<div class="chips">' + names.map(function (n) { return '<span class="chip">' + escAttr(n) + '</span>'; }).join('') + '</div>';
   }
 
   function renderIOList() {
@@ -690,6 +755,7 @@
     qsa('.side-body > div').forEach(function (d) { d.classList.toggle('active', d.getAttribute('data-side') === name); });
     qsa('.side-tabs button').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-side') === name); });
     if (name === 'monitor') fitMonitor();
+    if (name === 'io' && cm) scanCodeForIO();
   }
 
   // ---------- примеры / уроки / справочник ----------
@@ -959,7 +1025,9 @@
         '<p>Луна IDE — русский редактор Lua для Stormworks: Build and Rescue.</p>' +
         '<p class="muted small">Разработчик: <b>' + DEVELOPER + '</b>.</p>' +
         '<p class="muted small">Работает полностью офлайн. Lua 5.3 (Fengari), CodeMirror 5.<br>' +
-        'Неофициальный инструмент, не связанный с разработчиками Stormworks.</p>', null);
+        'Неофициальный инструмент, не связанный с разработчиками Stormworks.</p>' +
+        '<p class="muted small">Новости и обновления — Telegram-канал:<br>' +
+        '<a href="' + TELEGRAM_URL + '" target="_blank" rel="noopener">' + TELEGRAM_URL + '</a></p>', null);
     };
 
     var saved = loadJSON(SETTINGS_KEY, {});

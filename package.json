@@ -1,7 +1,7 @@
 {
   "name": "luna-ide",
   "productName": "Luna IDE",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Луна IDE — русский редактор Lua для Stormworks: Build and Rescue",
   "author": "СтаричЁк",
   "license": "MIT",
@@ -9,7 +9,7 @@
   "scripts": {
     "start": "electron .",
     "icon": "node build/make-icon.mjs",
-    "dist": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --icon=build/icon.ico --app-version=1.1.0 --ignore=\"^/dist\" --ignore=\"^/node_modules\" --ignore=\"^/release\" --ignore=\"^/publish\" --ignore=\"^/_shot\"",
+    "dist": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --icon=build/icon.ico --app-version=1.2.0 --ignore=\"^/dist\" --ignore=\"^/node_modules\" --ignore=\"^/release\" --ignore=\"^/publish\" --ignore=\"^/_shot\"",
     "installer": "electron-builder --win nsis",
     "release-files": "node tools/make-release.mjs",
     "hosting": "node tools/make-hosting.mjs",

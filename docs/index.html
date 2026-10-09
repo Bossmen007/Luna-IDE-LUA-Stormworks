@@ -113,6 +113,7 @@
       <a href="#install">Установка</a>
       <a href="#faq">Вопросы</a>
       <a href="#download">Скачать</a>
+      <a class="tg-link" href="https://t.me/luna_ide" target="_blank" rel="noopener">Telegram</a>
     </nav>
   </div>
 </header>
@@ -120,7 +121,7 @@
 <div class="hero">
   <div class="bg" role="img" aria-label="Тёмный интерфейс приборной панели с луной"></div>
   <div class="wrap">
-    <span class="pill">Версия 1.1.0 · Windows 10/11 · работает офлайн</span>
+    <span class="pill">Версия 1.2.0 · Windows 10/11 · работает офлайн</span>
     <h1>Редактор Lua для Stormworks — полностью на русском</h1>
     <p class="lead">Пишите, запускайте и отлаживайте скрипты для микроконтроллеров Stormworks,
       не зная английского. Реальный интерпретатор Lua 5.3, виртуальный монитор, справочник API,
@@ -128,6 +129,7 @@
     <div class="btns">
       <a class="btn primary" id="dlWin" href="#download">⬇ Скачать для Windows</a>
       <a class="btn" id="dlWeb" href="#download">🌐 Открыть веб-версию</a>
+      <a class="btn tg-link" href="https://t.me/luna_ide" target="_blank" rel="noopener">✈️ Telegram-канал</a>
     </div>
     <p class="note">Бесплатно. Установщик ~99 МБ · веб-версия ~0,3 МБ. Регистрация не нужна,
       интернет во время работы не требуется.</p>
@@ -172,6 +174,29 @@
   </div>
 </section>
 
+<section id="news">
+  <div class="wrap">
+    <h2>Что нового в версии 1.2.0</h2>
+    <div class="grid g2">
+      <div class="card"><span class="ico">🧩</span><h3>Конструктор экранов стал полноценным</h3>
+        <p>20 видов элементов: кнопки, фиксаторы, тумблеры, лампы-индикаторы, полосы, шкалы,
+          диалы, графики (линия / заливка / столбики), 7-сегментный и сегментный индикаторы,
+          батарея на 8 сегментов. Задаются диапазон значений, цвета по порогам и инверсия,
+          привязка к каналам композита, а на выходе — готовый Lua-код (<code>onTick</code> + <code>onDraw</code>).</p></div>
+      <div class="card"><span class="ico">🔌</span><h3>Автоопределение сигналов композита</h3>
+        <p>Кнопка «⟳ Из кода» сама находит входы и выходы (<code>input.getNumber/getBool</code>,
+          <code>output.setNumber/setBool</code>), подставляет имена из <code>local</code> и
+          показывает список локальных переменных. Каналы больше не нужно вводить вручную.</p></div>
+      <div class="card"><span class="ico">✈️</span><h3>Telegram-канал</h3>
+        <p>В шапке программы и здесь, на сайте, — кнопка перехода в наш Telegram: новости,
+          обновления и разборы скриптов — <a class="tg-link" href="https://t.me/luna_ide" target="_blank" rel="noopener">t.me/luna_ide</a>.</p></div>
+      <div class="card"><span class="ico">🛠</span><h3>Интерфейс и мелочи</h3>
+        <p>Копирование и вставка стиля элемента одним кликом, темы оформления приборной панели,
+          счётчик длины кода с предупреждением о лимите игры (8192 символа), новые проверки качества сборки.</p></div>
+    </div>
+  </div>
+</section>
+
 <section id="shots">
   <div class="wrap">
     <h2>Скриншоты</h2>
@@ -197,7 +222,7 @@
     <div>
       <h2>Установка (Windows)</h2>
       <ol class="steps">
-        <li>Скачайте установщик <code>Luna-IDE-Setup-1.1.0.exe</code>.</li>
+        <li>Скачайте установщик <code>Luna-IDE-Setup-1.2.0.exe</code>.</li>
         <li>Запустите его и выберите папку установки. Ярлык появится на рабочем столе.</li>
         <li>Откройте «Луна IDE», напишите скрипт и нажмите <b>▶ Запустить</b> (или <code>F5</code>).</li>
       </ol>
@@ -237,7 +262,7 @@
 <section class="cta" id="download">
   <div class="wrap">
     <h2>Скачать Луна IDE</h2>
-    <p class="muted">Версия 1.1.0 · Windows 10/11 (x64) · бесплатно</p>
+    <p class="muted">Версия 1.2.0 · Windows 10/11 (x64) · бесплатно</p>
     <div class="btns">
       <a class="btn primary" id="dlWin2" href="#download">⬇ Скачать для Windows</a>
       <a class="btn" id="dlWeb3" href="#download">🌐 Открыть веб-версию</a>
@@ -248,7 +273,8 @@
 
 <footer>
   <div class="wrap">
-    <p><b>Луна IDE</b> · автор: СтаричЁк · версия 1.1.0</p>
+    <p><b>Луна IDE</b> · автор: СтаричЁк · версия 1.2.0</p>
+    <p>Новости и обновления — Telegram-канал: <a class="tg-link" href="https://t.me/luna_ide" target="_blank" rel="noopener">t.me/luna_ide</a></p>
     <p>Неофициальный инструмент для игры Stormworks: Build and Rescue. Все права на игру
       принадлежат её разработчикам.</p>
   </div>
@@ -268,8 +294,14 @@ var LINKS = {
   itchUrl: '',          // например: 'https://starichek.itch.io/luna-ide'
   releaseUrl: '',       // прямая ссылка на установщик в GitHub Releases (можно не заполнять)
   webUrl:  'app/index.html',
-  installer: 'Luna-IDE-Setup-1.1.0.exe'   // имя файла в той же папке, что и лендинг
+  installer: 'Luna-IDE-Setup-1.2.0.exe',   // имя файла в той же папке, что и лендинг
+  tgUrl:   'https://t.me/luna_ide'          // Telegram-канал проекта
 };
+
+/* все ссылки на Telegram помечены классом tg-link — заполняем из LINKS.tgUrl */
+Array.prototype.forEach.call(document.querySelectorAll('.tg-link'), function (el) {
+  if (LINKS.tgUrl) { el.href = LINKS.tgUrl; el.target = '_blank'; el.rel = 'noopener'; }
+});
 
 /* На GitHub Pages ссылку на релиз можно не указывать — она определяется сама:
    https://ПОЛЬЗОВАТЕЛЬ.github.io/РЕПОЗИТОРИЙ/  →
