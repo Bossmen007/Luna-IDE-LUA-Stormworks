@@ -17,6 +17,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -103,6 +104,48 @@ function changelogFor(version) {
     const sec = parts.find((p) => p.trim().startsWith('## v' + version));
     return sec ? sec.split('\n').slice(1).join('\n').trim() : '';
   } catch (e) { return ''; }
+}
+
+// Загрузка файла в релиз. Сначала fetch с повторами, при неудаче — curl.exe
+// (для больших файлов на Windows curl надёжнее undici). Токен в вывод не попадает.
+async function uploadAsset(releaseId, filePath, assetName) {
+  const url = `https://uploads.github.com/repos/${OWNER}/${REPO}/releases/${releaseId}/assets?name=${encodeURIComponent(assetName)}`;
+  const buf = fs.readFileSync(filePath);
+  let lastErr = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + TOKEN,
+          'User-Agent': UA,
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': String(buf.length)
+        },
+        body: buf
+      });
+      const text = await res.text();
+      if (!res.ok) throw new Error('HTTP ' + res.status + ' — ' + text);
+      return JSON.parse(text);
+    } catch (e) {
+      lastErr = e;
+      console.log('  попытка ' + attempt + ' не удалась: ' + e.message + ' — повтор через 3 с…');
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+  }
+  console.log('  пробую curl.exe…');
+  const out = execFileSync('curl.exe', [
+    '-sS', '-X', 'POST',
+    '-H', 'Authorization: Bearer ' + TOKEN,
+    '-H', 'User-Agent: ' + UA,
+    '-H', 'Content-Type: application/octet-stream',
+    '--data-binary', '@' + filePath,
+    url
+  ], { encoding: 'utf8', maxBuffer: 1 << 26 });
+  let data = null;
+  try { data = JSON.parse(out); } catch (e) { data = null; }
+  if (data && data.id) return data;
+  throw new Error('curl не загрузил файл: ' + String(out).slice(0, 300) + ' (последняя ошибка: ' + lastErr.message + ')');
 }
 
 async function cmdStatus() {
@@ -275,29 +318,17 @@ async function cmdRelease() {
     console.log('релиз ' + tag + ' создан');
   }
 
-  // файл с постоянным именем — чтобы ссылка .../releases/latest/download/Luna-IDE-Setup.exe работала всегда
-  const buf = fs.readFileSync(exe);
+  // ровно один файл с постоянным именем — чтобы ссылка
+  // .../releases/latest/download/Luna-IDE-Setup.exe работала всегда и без дублей
   const assetName = 'Luna-IDE-Setup.exe';
-  console.log('загружаю установщик (' + (buf.length / 1048576).toFixed(1) + ' МБ)…');
+  console.log('загружаю установщик (' + (fs.statSync(exe).size / 1048576).toFixed(1) + ' МБ)…');
   for (const a of rel.assets) {
-    if (a.name === assetName) {
+    if (/^Luna-IDE-Setup.*\.exe$/i.test(a.name)) {
       await api(a.url, { method: 'DELETE' });
-      console.log('  старый файл ' + assetName + ' удалён');
+      console.log('  удалён лишний файл ' + a.name);
     }
   }
-  const up = await fetch(`https://uploads.github.com/repos/${OWNER}/${REPO}/releases/${rel.id}/assets?name=${encodeURIComponent(assetName)}`, {
-    method: 'POST',
-    headers: {
-      Authorization: 'Bearer ' + TOKEN,
-      'User-Agent': UA,
-      'Content-Type': 'application/octet-stream',
-      'Content-Length': String(buf.length)
-    },
-    body: buf
-  });
-  const upText = await up.text();
-  if (!up.ok) throw new Error('загрузка файла: HTTP ' + up.status + ' — ' + upText);
-  const asset = JSON.parse(upText);
+  const asset = await uploadAsset(rel.id, exe, assetName);
   console.log('файл загружен: ' + asset.name + '  ' + (asset.size / 1048576).toFixed(1) + ' МБ');
   console.log('ссылка для скачивания:');
   console.log('  https://github.com/' + OWNER + '/' + REPO + '/releases/latest/download/' + assetName);

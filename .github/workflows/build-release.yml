@@ -40,16 +40,17 @@ jobs:
         # Без этого флага electron-builder сам пробует «опубликовать» и падает без токена.
         run: npx electron-builder --win nsis --publish never
 
-      - name: Дублировать установщик с постоянным именем
+      # Постоянное имя: ссылка .../releases/latest/download/Luna-IDE-Setup.exe
+      # не меняется от версии к версии и используется страницей проекта.
+      # В релиз прикладываем РОВНО один файл — без дублей с версией в имени.
+      - name: Дать установщику постоянное имя
         run: copy release\Luna-IDE-Setup-*.exe release\Luna-IDE-Setup.exe
 
-      - name: Приложить файлы к релизу
+      - name: Приложить файл к релизу
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            release/Luna-IDE-Setup.exe
-            release/Luna-IDE-Setup-*.exe
+          files: release/Luna-IDE-Setup.exe
 
       - name: Сохранить установщик как артефакт (для ручного запуска)
         if: github.event_name == 'workflow_dispatch'
