@@ -63,6 +63,8 @@
         <textarea id="code" spellcheck="false"></textarea>
       </div>
 
+      <div class="side-resizer" id="sideResizer" title="Потяните, чтобы изменить ширину панели. Двойной клик — сбросить."></div>
+
       <div class="side-col">
         <div class="side-tabs">
           <button data-side="monitor" class="active">🖥 Монитор</button>
@@ -190,6 +192,19 @@
         <p class="muted small">Новости и обновления — Telegram-канал: <a href="https://t.me/luna_ide" target="_blank" rel="noopener">t.me/luna_ide</a>.</p>
         <p class="muted small">Это неофициальный инструмент, не связанный с разработчиками Stormworks. Имена функций API проверяйте в игре.</p>
         <button class="btn" id="btnAbout">Об «Луна IDE»</button>
+      </div>
+      <div class="setting-card" id="updateCard" style="display:none">
+        <h3>Обновления</h3>
+        <p class="muted small">Текущая версия: <b id="updCurrent">—</b></p>
+        <p class="muted small" id="updStatus">Проверка не запускалась.</p>
+        <label class="setting-row">Проверять обновления при запуске
+          <input type="checkbox" id="updAuto" checked>
+        </label>
+        <div class="row gap">
+          <button class="btn" id="updCheck">Проверить обновления</button>
+          <button class="btn primary" id="updAction" style="display:none">Скачать обновление</button>
+        </div>
+        <p class="muted small">Обновления приходят с GitHub Releases. Интернет нужен только для проверки и загрузки — сама IDE работает офлайн.</p>
       </div>
     </div>
   </section>

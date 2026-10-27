@@ -45,7 +45,9 @@
     maxInstructions: 20000000,
     donateUrl: '',           // публичная ссылка на страницу донатов (без личных данных)
     io: null,                // список сигналов композита (входы/выходы)
-    _v: 2
+    sideWidth: 470,          // ширина правой панели (монитор/композит), тянется ползунком
+    autoUpdate: true,        // проверять обновления при запуске (настольная версия)
+    _v: 3
   };
 
   // Список мониторов = только те, что реально есть в игре (официальная вики Stormworks).
@@ -110,6 +112,7 @@
     }
     syncMonitorSelects();
     syncDonateField();
+    applySideWidth();
     if (el.inpFont) el.inpFont.value = settings.fontSize;
     if (el.inpLimit) el.inpLimit.value = settings.maxInstructions;
     saveJSON(SETTINGS_KEY, settings);
@@ -234,6 +237,111 @@
     c.style.height = dispH + 'px';
     var eff = dispW / settings.monitorW;
     if (el.monZoomLabel) el.monZoomLabel.textContent = Math.round(eff * 100) + '%' + (z ? '' : ' · вписано');
+  }
+
+  // ---------- ширина правой панели (монитор / композит) ----------
+  var SIDE_MIN = 300, SIDE_DEF = 470;
+  function clampSideWidth(w) {
+    var max = Math.min(window.innerWidth * 0.7, Math.max(SIDE_MIN, window.innerWidth - 360));
+    w = Math.round(+w) || SIDE_DEF;
+    return Math.max(SIDE_MIN, Math.min(w, max));
+  }
+  function applySideWidth() {
+    var col = document.querySelector('.side-col');
+    if (!col) return;
+    if (window.innerWidth <= 900) { col.style.width = ''; return; }   // узкий экран — колонкой, CSS
+    settings.sideWidth = clampSideWidth(settings.sideWidth);
+    col.style.width = settings.sideWidth + 'px';
+  }
+  function initSideResizer() {
+    var bar = $('sideResizer'), col = document.querySelector('.side-col');
+    if (!bar || !col) return;
+    applySideWidth();
+    var dragging = false;
+    function stop() {
+      if (!dragging) return;
+      dragging = false;
+      bar.classList.remove('dragging');
+      document.body.classList.remove('resizing');
+      saveJSON(SETTINGS_KEY, settings);
+      if (cm) cm.refresh();
+      fitMonitor();
+    }
+    bar.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return;
+      dragging = true;
+      bar.classList.add('dragging');
+      document.body.classList.add('resizing');
+      try { bar.setPointerCapture(e.pointerId); } catch (err) { }
+      e.preventDefault();
+    });
+    bar.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var wrap = document.querySelector('.editor-wrap');
+      if (!wrap) return;
+      var r = wrap.getBoundingClientRect();
+      settings.sideWidth = clampSideWidth(r.right - e.clientX);
+      col.style.width = settings.sideWidth + 'px';
+      if (cm) cm.refresh();
+    });
+    bar.addEventListener('pointerup', stop);
+    bar.addEventListener('pointercancel', stop);
+    bar.addEventListener('dblclick', function () {
+      settings.sideWidth = SIDE_DEF;
+      applySideWidth();
+      saveJSON(SETTINGS_KEY, settings);
+      if (cm) cm.refresh();
+      fitMonitor();
+    });
+    window.addEventListener('resize', function () { applySideWidth(); if (cm) cm.refresh(); });
+  }
+
+  // ---------- обновления (только настольная версия) ----------
+  function initUpdateUI() {
+    if (!global.lunaDesktop || !global.lunaDesktop.onUpdateState) return;
+    var card = $('updateCard');
+    if (card) card.style.display = '';
+    var btnCheck = $('updCheck'), btnAction = $('updAction');
+    var status = $('updStatus'), cur = $('updCurrent'), auto = $('updAuto');
+    if (auto) {
+      auto.checked = settings.autoUpdate !== false;
+      auto.onchange = function () {
+        settings.autoUpdate = !!this.checked;
+        saveJSON(SETTINGS_KEY, settings);
+        global.lunaDesktop.updateAuto(settings.autoUpdate);
+      };
+    }
+    global.lunaDesktop.updateAuto(settings.autoUpdate !== false);
+    if (btnCheck) btnCheck.onclick = function () { global.lunaDesktop.updateCheck(); };
+    if (btnAction) btnAction.onclick = function () {
+      var st = card._st || {};
+      if (st.status === 'ready') global.lunaDesktop.updateInstall();
+      else global.lunaDesktop.updateDownload();
+    };
+    function render(st) {
+      card._st = st;
+      if (cur) cur.textContent = st.current || '—';
+      var s = st.status || 'idle', v = st.version || '', p = st.percent || 0;
+      if (status) {
+        if (s === 'checking') status.textContent = 'Проверяю обновления…';
+        else if (s === 'available') status.textContent = 'Доступна версия ' + v + '.';
+        else if (s === 'downloading') status.textContent = 'Скачиваю обновление… ' + p + '%';
+        else if (s === 'ready') status.textContent = 'Обновление ' + v + ' скачано — можно перезапустить.';
+        else if (s === 'none') status.textContent = 'Установлена последняя версия.';
+        else if (s === 'error') status.textContent = 'Не удалось проверить: ' + (st.error || 'нет сети').slice(0, 160);
+        else if (s === 'dev') status.textContent = 'Проверка работает только в установленной версии (не в режиме разработки).';
+        else status.textContent = 'Проверка не запускалась.';
+      }
+      if (btnAction) {
+        if (s === 'available') { btnAction.style.display = ''; btnAction.textContent = 'Скачать обновление'; btnAction.disabled = false; }
+        else if (s === 'ready') { btnAction.style.display = ''; btnAction.textContent = 'Перезапустить и обновить'; btnAction.disabled = false; }
+        else if (s === 'downloading') { btnAction.style.display = ''; btnAction.textContent = 'Скачиваю… ' + p + '%'; btnAction.disabled = true; }
+        else { btnAction.style.display = 'none'; btnAction.disabled = false; }
+      }
+      if (btnCheck) btnCheck.disabled = (s === 'checking' || s === 'downloading');
+    }
+    global.lunaDesktop.onUpdateState(render);
+    global.lunaDesktop.updateGet();
   }
   function monitorEffZoom() {
     var c = el.monitor;
@@ -435,6 +543,7 @@
   var tickCount = 0;
   function loop() {
     if (!running) return;
+    advanceAnim();
     if (hasTick) {
       var r1 = runtime.call('onTick');
       if (!r1.ok) { conError('Ошибка в onTick: ' + r1.error); stopRun(); return; }
@@ -464,6 +573,7 @@
       running = true; setRunButtons(true);
     }
     stopLoopOnly();
+    advanceAnim();
     if (hasTick) { var r1 = runtime.call('onTick'); if (!r1.ok) { conError('onTick: ' + r1.error); return; } tickCount++; }
     swScreen.clear();
     if (hasDraw) { var r2 = runtime.call('onDraw'); if (!r2.ok) { conError('onDraw: ' + r2.error); return; } }
@@ -486,9 +596,22 @@
   // ---------- панель композита: входы и выходы создаются вручную ----------
   function defaultIO() {
     return [
-      { dir: 'in', type: 'num', ch: 1, name: 'Значение' },
+      { dir: 'in', type: 'num', ch: 1, name: 'Значение', value: 0, anim: { on: false, min: 0, max: 1, step: 0.1 } },
       { dir: 'out', type: 'num', ch: 1, name: 'Выход' }
     ];
+  }
+  // дополняем запись полями анимации (старые сохранения остаются совместимыми)
+  function ioNorm(r) {
+    if (!r) return r;
+    if (r.dir === 'in' && r.type === 'num') {
+      if (typeof r.value !== 'number' || !isFinite(r.value)) r.value = 0;
+      if (!r.anim || typeof r.anim !== 'object') r.anim = { on: false, min: 0, max: 1, step: 0.1 };
+      if (typeof r.anim.on !== 'boolean') r.anim.on = false;
+      ['min', 'max', 'step'].forEach(function (k) {
+        if (typeof r.anim[k] !== 'number' || !isFinite(r.anim[k])) r.anim[k] = (k === 'min' ? 0 : (k === 'max' ? 1 : 0.1));
+      });
+    }
+    return r;
   }
   function escAttr(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -501,12 +624,14 @@
   }
   function buildIOPanel() {
     if (!settings.io || !settings.io.length) settings.io = defaultIO();
+    settings.io.forEach(ioNorm);
     el.io.innerHTML =
       '<div class="io-head"><span class="io-head-title">Сигналы</span>' +
       '<button class="btn small" id="ioScan" title="Найти input.getNumber/getBool и output.setNumber/setBool в коде">⟳ Из кода</button>' +
       '<button class="btn small" id="ioAdd">＋ Добавить</button></div>' +
       '<div id="ioList" class="io-list"></div>' +
       '<p class="muted small">Сигналы находятся в коде кнопкой «Из кода» (или задаются вручную). Каналы 1–32. Название — только подпись в IDE, код оно не меняет.</p>' +
+      '<p class="muted small">У числового входа галочка «анимация»: задайте мин, макс и шаг за тик — значение будет ходить маятником, пока скрипт запущен. Без галочки в код идёт точное число.</p>' +
       '<div class="io-head" style="margin-top:10px"><span class="io-head-title">Локальные переменные</span></div>' +
       '<div id="ioLocals" class="io-list"><p class="muted small">Нажмите «Из кода» — покажем объявленные <code>local</code> (только для справки).</p></div>';
     $('ioScan').onclick = scanCodeForIO;
@@ -547,9 +672,10 @@
       var prev = null;
       (settings.io || []).forEach(function (r) { if (r.dir === f.dir && r.type === f.type && r.ch === f.ch && !r.auto) prev = r; });
       var name = codeName || (prev && prev.name) || ((f.dir === 'in' ? 'Вход ' : 'Выход ') + f.ch);
-      result.push({ dir: f.dir, type: f.type, ch: f.ch, name: name, auto: true });
+      result.push(ioNorm({ dir: f.dir, type: f.type, ch: f.ch, name: name, auto: true }));
     });
     settings.io = result;
+    settings.io.forEach(ioNorm);
     saveJSON(SETTINGS_KEY, settings);
     renderIOList();
     renderLocals(code);
@@ -572,22 +698,38 @@
   function renderIOList() {
     var list = $('ioList');
     if (!list) return;
-    if (!settings.io.length) {
+    if (!settings.io || !settings.io.length) {
       list.innerHTML = '<p class="muted small">Пока пусто — нажмите «＋ Добавить».</p>';
       return;
     }
     var html = '';
     settings.io.forEach(function (r, i) {
+      ioNorm(r);
+      var animOn = !!(r.dir === 'in' && r.type === 'num' && r.anim && r.anim.on);
+      var cur = animOn ? (ioAnim[i] ? ioAnim[i].v : animNum(r.anim.min)) : r.value;
       html += '<div class="io-entry" data-i="' + i + '">' +
+        '<div class="io-main">' +
         '<span class="io-dir ' + r.dir + '" title="' + (r.dir === 'in' ? 'Вход в скрипт' : 'Выход из скрипта') + '">' + (r.dir === 'in' ? 'ВХОД' : 'ВЫХОД') + '</span>' +
         '<span class="io-type">' + (r.type === 'bool' ? 'лог.' : 'число') + '</span>' +
         '<input class="io-ch" type="number" min="1" max="32" value="' + r.ch + '" title="Канал 1–32">' +
         '<input class="io-name" type="text" placeholder="Название" value="' + escAttr(r.name) + '">';
-      if (r.dir === 'in' && r.type === 'num') html += '<input class="io-val" type="number" step="0.1" value="0" title="Значение">';
-      else if (r.dir === 'in') html += '<label class="io-bool" title="Логический вход"><input type="checkbox"></label>';
+      if (r.dir === 'in' && r.type === 'num') {
+        html += '<input class="io-val' + (animOn ? ' anim' : '') + '" type="number" step="0.1" value="' + fmtNum(cur) + '" title="' +
+          (animOn ? 'Текущее значение анимации (только чтение)' : 'Точное значение входа') + '"' + (animOn ? ' readonly' : '') + '>' +
+          '<label class="io-anim-check" title="Маятник: минимум → максимум → минимум, шаг за один тик. Старт — вместе со скриптом.">' +
+          '<input type="checkbox" class="io-anim-on"' + (animOn ? ' checked' : '') + '>анимация</label>';
+      } else if (r.dir === 'in') html += '<label class="io-bool" title="Логический вход"><input type="checkbox"></label>';
       else if (r.type === 'num') html += '<span class="io-outnum" title="Значение выхода">0</span>';
       else html += '<span class="io-outbool" title="Логический выход">—</span>';
       html += '<button class="icon-btn io-del" title="Удалить">✕</button></div>';
+      if (animOn) {
+        html += '<div class="io-anim-row">' +
+          '<span class="io-anim-label">мин</span><input class="io-anim-min" type="number" step="any" value="' + r.anim.min + '" title="Минимум">' +
+          '<span class="io-anim-label">макс</span><input class="io-anim-max" type="number" step="any" value="' + r.anim.max + '" title="Максимум">' +
+          '<span class="io-anim-label">шаг</span><input class="io-anim-step" type="number" step="any" value="' + r.anim.step + '" title="Шаг за один тик">' +
+          '</div>';
+      }
+      html += '</div>';
     });
     list.innerHTML = html;
 
@@ -601,25 +743,95 @@
         r.name = this.value; saveJSON(SETTINGS_KEY, settings);
       });
       var v = row.querySelector('.io-val');
-      if (v) v.addEventListener('input', function () { if (runtime) runtime.numIn[r.ch] = parseFloat(this.value) || 0; });
+      if (v && !v.readOnly) v.addEventListener('input', function () {
+        r.value = parseFloat(this.value) || 0;
+        if (runtime) runtime.numIn[r.ch] = r.value;
+        saveJSON(SETTINGS_KEY, settings);
+      });
+      var anim = row.querySelector('.io-anim-on');
+      if (anim) anim.addEventListener('change', function () {
+        var on = this.checked;
+        r.anim.on = on;
+        delete ioAnim[i];
+        if (on) {
+          ioAnim[i] = { v: animNum(r.anim.min), dir: 1 };
+          if (runtime) runtime.numIn[r.ch] = ioAnim[i].v;
+        } else if (runtime) {
+          runtime.numIn[r.ch] = r.value;
+        }
+        saveJSON(SETTINGS_KEY, settings);
+        renderIOList();
+      });
+      ['min', 'max', 'step'].forEach(function (k) {
+        var inp = row.querySelector('.io-anim-' + k);
+        if (!inp) return;
+        inp.addEventListener('input', function () {
+          var n = parseFloat(this.value);
+          r.anim[k] = isFinite(n) ? n : (k === 'step' ? 0.1 : 0);
+          delete ioAnim[i];   // следующее движение снова начнётся с минимума
+          saveJSON(SETTINGS_KEY, settings);
+        });
+      });
       var b = row.querySelector('.io-bool input');
       if (b) b.addEventListener('change', function () { if (runtime) runtime.boolIn[r.ch] = this.checked; });
       row.querySelector('.io-del').addEventListener('click', function () {
-        settings.io.splice(i, 1); saveJSON(SETTINGS_KEY, settings); renderIOList();
+        settings.io.splice(i, 1); ioAnim = {}; saveJSON(SETTINGS_KEY, settings); renderIOList();
       });
     });
     refreshIOInputs();
     updateIOOutputs();
   }
 
+  function fmtNum(x) {
+    var n = parseFloat(x);
+    if (!isFinite(n)) n = 0;
+    return Math.round(n * 1000) / 1000;
+  }
+  function animNum(x) { var n = parseFloat(x); return isFinite(n) ? n : 0; }
+
+  // ---------- анимация числовых входов (маятник мин → макс → мин) ----------
+  var ioAnim = {};            // индекс записи -> { v, dir }
+  function advanceAnim() {
+    if (!runtime || !settings.io) return;
+    var rows = qsa('#ioList .io-entry');
+    if (!rows.length) return;
+    rows.forEach(function (row) {
+      var i = +row.getAttribute('data-i'), r = settings.io[i];
+      if (!r || r.dir !== 'in' || r.type !== 'num' || !r.anim || !r.anim.on) return;
+      var lo = Math.min(animNum(r.anim.min), animNum(r.anim.max));
+      var hi = Math.max(animNum(r.anim.min), animNum(r.anim.max));
+      var step = Math.abs(animNum(r.anim.step));
+      var a = ioAnim[i] || (ioAnim[i] = { v: lo, dir: 1 });
+      if (step > 0 && hi > lo) {
+        a.v += a.dir * step;
+        if (a.v >= hi) { a.v = hi; a.dir = -1; }
+        else if (a.v <= lo) { a.v = lo; a.dir = 1; }
+      } else {
+        a.v = lo;   // шаг 0 или мин = макс — число стоит на минимуме
+      }
+      runtime.numIn[r.ch] = a.v;
+      var v = row.querySelector('.io-val');
+      if (v) v.value = fmtNum(a.v);
+    });
+  }
+
   // значения, введённые пользователем -> в рантайм
   function applyInputsFromRows() {
     if (!runtime) return;
     qsa('#ioList .io-entry').forEach(function (row) {
-      var r = settings.io[+row.getAttribute('data-i')];
+      var i = +row.getAttribute('data-i'), r = settings.io[i];
       if (!r || r.dir !== 'in') return;
-      var v = row.querySelector('.io-val');
-      if (v) runtime.numIn[r.ch] = parseFloat(v.value) || 0;
+      ioNorm(r);
+      if (r.type === 'num') {
+        if (r.anim.on) {   // анимация всегда начинается с минимума при запуске
+          ioAnim[i] = { v: animNum(r.anim.min), dir: 1 };
+          runtime.numIn[r.ch] = ioAnim[i].v;
+        } else {
+          var v = row.querySelector('.io-val');
+          if (v) r.value = parseFloat(v.value) || 0;
+          runtime.numIn[r.ch] = r.value;
+        }
+      }
       var b = row.querySelector('.io-bool input');
       if (b) runtime.boolIn[r.ch] = b.checked;
     });
@@ -628,10 +840,16 @@
   function refreshIOInputs() {
     if (!runtime) return;
     qsa('#ioList .io-entry').forEach(function (row) {
-      var r = settings.io[+row.getAttribute('data-i')];
+      var i = +row.getAttribute('data-i'), r = settings.io[i];
       if (!r || r.dir !== 'in') return;
       var v = row.querySelector('.io-val');
-      if (v && document.activeElement !== v) v.value = runtime.numIn[r.ch];
+      if (v) {
+        if (r.type === 'num' && r.anim && r.anim.on) {
+          v.value = fmtNum(ioAnim[i] ? ioAnim[i].v : animNum(r.anim.min));
+        } else if (document.activeElement !== v) {
+          v.value = runtime.numIn[r.ch];
+        }
+      }
       var b = row.querySelector('.io-bool input');
       if (b) b.checked = !!runtime.boolIn[r.ch];
     });
@@ -666,7 +884,7 @@
       var type = back.querySelector('#ioType').value;
       var ch = Math.max(1, Math.min(32, Math.round(+back.querySelector('#ioCh').value) || 1));
       var name = back.querySelector('#ioName').value.trim() || ((dir === 'in' ? 'Вход ' : 'Выход ') + ch);
-      settings.io.push({ dir: dir, type: type, ch: ch, name: name });
+      settings.io.push(ioNorm({ dir: dir, type: type, ch: ch, name: name, value: 0, anim: { on: false, min: 0, max: 1, step: 0.1 } }));
       saveJSON(SETTINGS_KEY, settings);
       if (runtime && dir === 'in') { if (type === 'num') runtime.numIn[ch] = 0; else runtime.boolIn[ch] = false; }
       renderIOList();
@@ -1006,6 +1224,7 @@
           wmax.title = isMax ? 'Восстановить' : 'Развернуть';
         });
       }
+      initUpdateUI();
     }
     // поддержка проекта
     if (el.btnDonate) el.btnDonate.onclick = openDonateDialog;
@@ -1034,12 +1253,13 @@
     settings = Object.assign(settings, saved);
     // миграция старого неигрового размера 256×256 на реальный 5×3 (160×96)
     if (!saved._v && settings.monitorW === 256 && settings.monitorH === 256) { settings.monitorW = 160; settings.monitorH = 96; }
-    settings._v = 2;
+    settings._v = 3;
 
     buildMonitorSelects();
 
     initEditor();
     initRuntime();
+    initSideResizer();
     initMonitorTouch();
     updateStatus();
 

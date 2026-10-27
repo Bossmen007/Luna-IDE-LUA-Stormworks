@@ -106,46 +106,45 @@ function changelogFor(version) {
   } catch (e) { return ''; }
 }
 
-// Загрузка файла в релиз. Сначала fetch с повторами, при неудаче — curl.exe
-// (для больших файлов на Windows curl надёжнее undici). Токен в вывод не попадает.
+// Загрузка файла в релиз. Для больших файлов curl.exe надёжнее Node-fetch:
+// он умеет повторять попытки при сетевых сбоях (--retry-all-errors) и не «висит»
+// на таймаутах. Токен в вывод не попадает.
 async function uploadAsset(releaseId, filePath, assetName) {
   const url = `https://uploads.github.com/repos/${OWNER}/${REPO}/releases/${releaseId}/assets?name=${encodeURIComponent(assetName)}`;
-  const buf = fs.readFileSync(filePath);
-  let lastErr = null;
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          Authorization: 'Bearer ' + TOKEN,
-          'User-Agent': UA,
-          'Content-Type': 'application/octet-stream',
-          'Content-Length': String(buf.length)
-        },
-        body: buf
-      });
-      const text = await res.text();
-      if (!res.ok) throw new Error('HTTP ' + res.status + ' — ' + text);
-      return JSON.parse(text);
-    } catch (e) {
-      lastErr = e;
-      console.log('  попытка ' + attempt + ' не удалась: ' + e.message + ' — повтор через 3 с…');
-      await new Promise((r) => setTimeout(r, 3000));
-    }
+  const sizeMb = (fs.statSync(filePath).size / 1048576).toFixed(1);
+  console.log('  загрузка ' + sizeMb + ' МБ через curl…');
+  try {
+    const out = execFileSync('curl.exe', [
+      '-sS', '--fail-with-body',
+      '--retry', '5', '--retry-all-errors', '--retry-delay', '3',
+      '-X', 'POST',
+      '-H', 'Authorization: Bearer ' + TOKEN,
+      '-H', 'User-Agent: ' + UA,
+      '-H', 'Content-Type: application/octet-stream',
+      '--data-binary', '@' + filePath,
+      url
+    ], { encoding: 'utf8', maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'pipe'] });
+    const data = JSON.parse(out);
+    if (data && data.id) return data;
+    throw new Error('ответ без id: ' + String(out).slice(0, 200));
+  } catch (e) {
+    // запасной путь: Node-fetch
+    console.log('  curl не удался (' + (e.stderr ? String(e.stderr).slice(0, 160) : e.message) + '), пробую fetch…');
+    const buf = fs.readFileSync(filePath);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + TOKEN,
+        'User-Agent': UA,
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': String(buf.length)
+      },
+      body: buf
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' — ' + text);
+    return JSON.parse(text);
   }
-  console.log('  пробую curl.exe…');
-  const out = execFileSync('curl.exe', [
-    '-sS', '-X', 'POST',
-    '-H', 'Authorization: Bearer ' + TOKEN,
-    '-H', 'User-Agent: ' + UA,
-    '-H', 'Content-Type: application/octet-stream',
-    '--data-binary', '@' + filePath,
-    url
-  ], { encoding: 'utf8', maxBuffer: 1 << 26 });
-  let data = null;
-  try { data = JSON.parse(out); } catch (e) { data = null; }
-  if (data && data.id) return data;
-  throw new Error('curl не загрузил файл: ' + String(out).slice(0, 300) + ' (последняя ошибка: ' + lastErr.message + ')');
 }
 
 async function cmdStatus() {
@@ -275,7 +274,10 @@ async function cmdPages() {
 async function cmdRelease() {
   const tag = 'v' + VERSION;
   const exe = path.join(ROOT, 'release', `Luna-IDE-Setup-${VERSION}.exe`);
+  const yml = path.join(ROOT, 'release', 'latest.yml');
+  const blockMap = exe + '.blockmap';
   if (!fs.existsSync(exe)) { console.error('нет установщика: ' + exe + ' — сначала npm run installer'); process.exit(1); }
+  if (!fs.existsSync(yml)) { console.error('нет latest.yml: ' + yml + ' — соберите установщик заново (npm run installer)'); process.exit(1); }
 
   const chlog = changelogFor(VERSION);
   const notes = [
@@ -318,21 +320,54 @@ async function cmdRelease() {
     console.log('релиз ' + tag + ' создан');
   }
 
-  // ровно один файл с постоянным именем — чтобы ссылка
-  // .../releases/latest/download/Luna-IDE-Setup.exe работала всегда и без дублей
+  // В релизе три файла:
+  //  • Luna-IDE-Setup-<версия>.exe — его скачивает автообновление (имя из latest.yml);
+  //  • latest.yml — манифест версии для electron-updater;
+  //  • Luna-IDE-Setup.exe — копия с постоянным именем для постоянной ссылки сайта.
+  const versionedName = 'Luna-IDE-Setup-' + VERSION + '.exe';
   const assetName = 'Luna-IDE-Setup.exe';
-  console.log('загружаю установщик (' + (fs.statSync(exe).size / 1048576).toFixed(1) + ' МБ)…');
   for (const a of rel.assets) {
-    if (/^Luna-IDE-Setup.*\.exe$/i.test(a.name)) {
+    if (/^Luna-IDE-Setup.*\.exe$/i.test(a.name) || /^Luna-IDE-Setup.*\.blockmap$/i.test(a.name) || a.name === 'latest.yml') {
       await api(a.url, { method: 'DELETE' });
-      console.log('  удалён лишний файл ' + a.name);
+      console.log('  удалён старый файл ' + a.name);
     }
   }
-  const asset = await uploadAsset(rel.id, exe, assetName);
-  console.log('файл загружен: ' + asset.name + '  ' + (asset.size / 1048576).toFixed(1) + ' МБ');
-  console.log('ссылка для скачивания:');
+  console.log('загружаю установщик (' + (fs.statSync(exe).size / 1048576).toFixed(1) + ' МБ)…');
+  const asset = await uploadAsset(rel.id, exe, versionedName);
+  console.log('  версия для автообновления: ' + asset.name);
+  const ymlAsset = await uploadAsset(rel.id, yml, 'latest.yml');
+  console.log('  манифест: ' + ymlAsset.name);
+  if (fs.existsSync(blockMap)) {
+    const bm = await uploadAsset(rel.id, blockMap, path.basename(blockMap));
+    console.log('  блоки для докачки: ' + bm.name);
+  }
+  const alias = await uploadAsset(rel.id, exe, assetName);
+  console.log('  постоянная ссылка: ' + alias.name);
+  console.log('ссылки для скачивания:');
   console.log('  https://github.com/' + OWNER + '/' + REPO + '/releases/latest/download/' + assetName);
+  console.log('  https://github.com/' + OWNER + '/' + REPO + '/releases/latest/download/' + versionedName);
   console.log('страница релиза: ' + rel.html_url);
+}
+
+// Оставляет в релизе осмысленный набор: постоянная копия, версионный файл и latest.yml.
+// Лишние дубли (например, от прерванных заливок) удаляются через API.
+async function cmdFixAsset() {
+  const tag = 'v' + VERSION;
+  let rel = await api(`/repos/${OWNER}/${REPO}/releases/tags/${tag}`);
+  if (!rel.assets.length) { console.log('в релизе ' + tag + ' нет файлов'); return; }
+  const keep = ['Luna-IDE-Setup.exe', 'Luna-IDE-Setup-' + VERSION + '.exe', 'Luna-IDE-Setup-' + VERSION + '.exe.blockmap', 'latest.yml'];
+  let removed = 0;
+  for (const a of rel.assets) {
+    if (/^Luna-IDE-Setup.*\.exe$/i.test(a.name) && keep.indexOf(a.name) === -1) {
+      await api(a.url, { method: 'DELETE' });
+      console.log('удалён дубль ' + a.name);
+      removed++;
+    }
+  }
+  if (!removed) console.log('дублей нет');
+  rel = await api(`/repos/${OWNER}/${REPO}/releases/tags/${tag}`);
+  console.log('файлов в релизе ' + tag + ': ' + rel.assets.length + ' (' + rel.assets.map((a) => a.name).join(', ') + ')');
+  if (!rel.assets.some((a) => a.name === 'latest.yml')) console.log('ВНИМАНИЕ: latest.yml нет — автообновление не увидит версию');
 }
 
 async function cmdMeta() {
@@ -361,9 +396,10 @@ try {
   else if (cmd === 'pages') await cmdPages();
   else if (cmd === 'release') await cmdRelease();
   else if (cmd === 'meta') await cmdMeta();
+  else if (cmd === 'fixasset') await cmdFixAsset();
   else if (cmd === 'status') await cmdStatus();
   else {
-    console.log('Команды: status | upload [папка] | pages | release | meta');
+    console.log('Команды: status | upload [папка] | pages | release | meta | fixasset');
     console.log('Пример: node tools/gh-publish.mjs upload');
   }
 } catch (e) {

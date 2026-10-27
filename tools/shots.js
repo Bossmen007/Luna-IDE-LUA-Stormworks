@@ -38,9 +38,9 @@ const SHOTS = [
     file: '3-builder.png',
     steps: [
       [`document.querySelector('nav.tabs button[data-tab="builder"]').click();`, 700],
-      [`['bar', 'button', 'text'].forEach(function (k) {
-          var b = document.querySelector('[data-add="' + k + '"]'); if (b) b.click();
-        });`, 900]
+      // палитра конструктора: полоса, кнопка, шкала, диал, батарея, 7-сегмент, текст
+      [`var pals = document.querySelectorAll('#builderBody [data-pal]');
+        [9, 3, 10, 12, 19, 17, 0].forEach(function (i) { if (pals[i]) pals[i].click(); });`, 900]
     ]
   },
   {

@@ -11,6 +11,14 @@ publish/*.zip
 # Исполняемые файлы распространяются через GitHub Releases
 *.exe
 
+# Выгрузки истории (локальные архивы)
+export/
+
+# Секреты (токен Telegram-бота и пр.) — никогда в репозиторий
+.env
+telegram-token.txt
+*token*.txt
+
 # Служебное
 Thumbs.db
 desktop.ini

@@ -5,6 +5,7 @@
 'use strict';
 
 const { app, BrowserWindow, Menu, shell, dialog, ipcMain } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 
@@ -76,6 +77,45 @@ function createWindow() {
   win.on('closed', () => { win = null; });
 }
 
+// ---------- автообновление (electron-updater, GitHub Releases) ----------
+// Данные о фиде берутся из app-update.yml, его кладёт electron-builder при сборке.
+// Проверка идёт тихо: при отсутствии сети приложение работает как обычно.
+let autoUpdateOn = true;
+let updateState = { status: 'idle', version: null, percent: 0, error: null };
+
+function pushUpdateState(patch) {
+  updateState = Object.assign(updateState, patch);
+  if (win && !win.isDestroyed()) win.webContents.send('update:state', Object.assign({
+    current: app.getVersion(),
+    packaged: app.isPackaged
+  }, updateState));
+}
+
+function initUpdater() {
+  if (!app.isPackaged) { updateState.status = 'dev'; return; }
+  autoUpdater.autoDownload = false;          // сначала спрашиваем пользователя
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on('checking-for-update', () => pushUpdateState({ status: 'checking', error: null }));
+  autoUpdater.on('update-available', (info) => pushUpdateState({ status: 'available', version: info.version, percent: 0, error: null }));
+  autoUpdater.on('update-not-available', () => pushUpdateState({ status: 'none', percent: 0, error: null }));
+  autoUpdater.on('download-progress', (p) => pushUpdateState({ status: 'downloading', percent: Math.round(p.percent || 0) }));
+  autoUpdater.on('update-downloaded', (info) => pushUpdateState({ status: 'ready', version: info.version, percent: 100, error: null }));
+  autoUpdater.on('error', (err) => pushUpdateState({ status: 'error', error: String((err && err.message) || err) }));
+
+  if (autoUpdateOn) setTimeout(() => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      pushUpdateState({ status: 'error', error: String((err && err.message) || err) });
+    });
+  }, 3000);
+}
+
+function startUpdateCheck() {
+  if (!app.isPackaged) { pushUpdateState({ status: 'dev' }); return; }
+  autoUpdater.checkForUpdates().catch((err) => {
+    pushUpdateState({ status: 'error', error: String((err && err.message) || err) });
+  });
+}
+
 function showAbout() {
   dialog.showMessageBox(win, {
     type: 'info',
@@ -95,6 +135,7 @@ function showAbout() {
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);   // системного меню нет вообще
   createWindow();
+  initUpdater();
 });
 
 // управление окном из интерфейса (кнопки в правом верхнем углу)
@@ -105,6 +146,26 @@ ipcMain.on('win:toggle-maximize', () => {
 });
 ipcMain.on('win:close', () => { if (win) win.close(); });
 ipcMain.on('win:about', () => showAbout());
+
+// автообновление: команды из интерфейса
+ipcMain.on('update:check', () => startUpdateCheck());
+ipcMain.on('update:download', () => {
+  autoUpdater.downloadUpdate().catch((err) => {
+    pushUpdateState({ status: 'error', error: String((err && err.message) || err) });
+  });
+});
+ipcMain.on('update:install', () => {
+  if (updateState.status !== 'ready') return;
+  setImmediate(() => autoUpdater.quitAndInstall());
+});
+ipcMain.on('update:auto', (e, on) => { autoUpdateOn = !!on; });
+ipcMain.on('update:get', () => {
+  if (!win || win.isDestroyed()) return;
+  win.webContents.send('update:state', Object.assign({
+    current: app.getVersion(),
+    packaged: app.isPackaged
+  }, updateState));
+});
 
 app.on('second-instance', () => {
   if (win) { if (win.isMinimized()) win.restore(); win.focus(); }
