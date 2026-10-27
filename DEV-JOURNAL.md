@@ -416,7 +416,7 @@
 
 ## Чистка тяжёлых папок (2026-10-27)
 
-1. **Освобождено 1 494 МБ** (2 363 → 870 МБ): удалены старые сборки из `release` (`Luna-IDE-Setup-1.1.0/1.2.0/1.3.0/1.3.1.exe` + блокмапы) и `release/win-unpacked`, папка `dist` (portable-сборка), `publish/hosting` и установщики/старые архивы из `publish/itch`.
+1. **Освобождено 1 594 МБ** (2 363 → 769 МБ): удалены старые сборки из `release` (`Luna-IDE-Setup-1.1.0/1.2.0/1.3.0/1.3.1.exe` + блокмапы) и `release/win-unpacked`, папка `dist` (portable-сборка), `publish/hosting` и установщики/старые архивы из `publish/itch`.
 2. **Оставлено:** `release/Luna-IDE-Setup.exe` (текущая 1.3.1, 99 МБ) с блокмапом и `latest.yml` — совпадение размера проверено; `publish/github` (7 МБ, идёт на GitHub), `publish/web`, `publish/site`, `Stormworks-RU`, `node_modules`.
 3. **Восстанавливается одной командой:** `dist` — `npm run dist`, `win-unpacked` и установщик — `npm run installer`, `publish/hosting` — `npm run hosting`, установщик и архив в `publish/itch` — `npm run release-files`. Перед удалением проверил ярлыки: ни один не указывал в `dist`.
-4. **Заодно** `publish/itch/page.md` обновлён с 1.1.0 на 1.3.1 (был забыт при прошлых релизах).
+4. **Заодно** удалён старый архив `publish/luna-ide-timeweb.zip` (100 МБ, сборка от 04.10.2026 — его заменяет папка из `npm run hosting`) и `publish/itch/page.md` обновлён с 1.1.0 на 1.3.1 (был забыт при прошлых релизах).
