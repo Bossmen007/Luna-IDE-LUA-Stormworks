@@ -12,6 +12,7 @@
  *   node tools/gh-publish.mjs release         создать релиз v<версия> и приложить установщик
  *   node tools/gh-publish.mjs fixasset        убрать из текущего релиза лишние дубли
  *   node tools/gh-publish.mjs cleanup         убрать старые копии установщика из прошлых релизов
+ *   node tools/gh-publish.mjs normalize       свести релиз со двумя копиями к одной (старая схема → новая)
  *   node tools/gh-publish.mjs feed            проверить живой latest.yml и файлы последнего релиза
  *
  * Владелец и репозиторий: переменные GITHUB_OWNER / GITHUB_REPO
@@ -428,6 +429,77 @@ async function cmdMeta() {
   console.log('домашняя страница: ' + homepage);
 }
 
+// Старая схема релиза: два установщика (версионный для latest.yml + копия с постоянным
+// именем для сайта). Сводим к одной копии: оставляем тот файл, на который ссылается
+// latest.yml (его байты и sha512 в манифесте совпадают), переименовываем в постоянное имя,
+// переписываем манифест и блокмап, лишнюю копию удаляем.
+async function cmdNormalize() {
+  const rels = await api(`/repos/${OWNER}/${REPO}/releases?per_page=100`);
+  let changed = 0;
+  for (const rel of rels) {
+    const constant = rel.assets.find((a) => a.name === 'Luna-IDE-Setup.exe');
+    const versioned = rel.assets.find((a) => /^Luna-IDE-Setup-.+\.exe$/i.test(a.name));
+    if (!constant || !versioned) continue;
+    console.log(rel.tag_name + ': две копии установщика — свожу к одной');
+
+    const ymlAsset = rel.assets.find((a) => a.name === 'latest.yml');
+    if (!ymlAsset) { console.log('  нет latest.yml — пропускаю'); continue; }
+    const res = await fetch(ymlAsset.browser_download_url);
+    if (!res.ok) { console.log('  не удалось скачать latest.yml: HTTP ' + res.status); continue; }
+    const text = await res.text();
+    const target = (text.match(/^\s*-?\s*url:\s*(.+)$/m) || [])[1];
+    const ymlSize = Number((text.match(/^\s*size:\s*(\d+)$/m) || [])[1] || 0);
+    const keep = rel.assets.find((a) => a.name === (target || '').trim());
+    if (!keep || keep.name === constant.name) {
+      console.log('  latest.yml ссылается не на версионный файл — пропускаю, нужен ручной разбор');
+      continue;
+    }
+    if (ymlSize && keep.size !== ymlSize) {
+      console.log('  ПЛОХО: размер в latest.yml (' + ymlSize + ') не совпадает с файлом (' + keep.size + ') — пропускаю');
+      continue;
+    }
+
+    // 1) лишняя копия (на неё никто не ссылается)
+    await api(constant.url, { method: 'DELETE' });
+    console.log('  удалён лишний файл ' + constant.name + ' (' + (constant.size / 1048576).toFixed(1) + ' МБ)');
+
+    // 2) блокмап — под постоянное имя
+    const bm = rel.assets.find((a) => a.name === keep.name + '.blockmap');
+    const bmTarget = constant.name + '.blockmap';
+    if (bm && bm.name !== bmTarget) {
+      const old = rel.assets.find((a) => a.name === bmTarget);
+      if (old) await api(old.url, { method: 'DELETE' });
+      await api(`/repos/${OWNER}/${REPO}/releases/assets/${bm.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: bmTarget })
+      });
+      console.log('  блокмап переименован: ' + bm.name + ' → ' + bmTarget);
+    }
+
+    // 3) установщик — под постоянное имя
+    await api(`/repos/${OWNER}/${REPO}/releases/assets/${keep.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name: constant.name })
+    });
+    console.log('  установщик переименован: ' + keep.name + ' → ' + constant.name);
+
+    // 4) манифест — на постоянное имя
+    const fixed = text
+      .replace(/^(\s*-?\s*url:\s*).+$/m, '$1' + constant.name)
+      .replace(/^(\s*path:\s*).+$/m, '$1' + constant.name);
+    if (fixed !== text) {
+      const tmp = path.join(os.tmpdir(), 'luna-latest-' + rel.tag_name + '.yml');
+      fs.writeFileSync(tmp, fixed);
+      await api(ymlAsset.url, { method: 'DELETE' });
+      await uploadAsset(rel.id, tmp, 'latest.yml');
+      fs.rmSync(tmp, { force: true });
+      console.log('  latest.yml переписан на ' + constant.name);
+    }
+    changed++;
+  }
+  console.log(changed ? 'нормализовано релизов: ' + changed : 'нечего нормализовать');
+}
+
 // Проверка живого фида автообновления: latest.yml в последнем релизе должен ссылаться
 // на файл, который реально лежит в этом релизе, с тем же размером и sha512.
 // Токен не нужен — репозиторий публичный.
@@ -478,10 +550,11 @@ try {
   else if (cmd === 'meta') await cmdMeta();
   else if (cmd === 'fixasset') await cmdFixAsset();
   else if (cmd === 'cleanup') await cmdCleanup();
+  else if (cmd === 'normalize') await cmdNormalize();
   else if (cmd === 'feed') await cmdFeed();
   else if (cmd === 'status') await cmdStatus();
   else {
-    console.log('Команды: status | upload [папка] | pages | release | meta | fixasset | cleanup | feed');
+    console.log('Команды: status | upload [папка] | pages | release | meta | fixasset | cleanup | normalize | feed');
     console.log('Пример: node tools/gh-publish.mjs upload');
   }
 } catch (e) {

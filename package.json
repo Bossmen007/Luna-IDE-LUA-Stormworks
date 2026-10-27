@@ -21,6 +21,7 @@
     "gh-meta": "node tools/gh-publish.mjs meta",
     "gh-fix": "node tools/gh-publish.mjs fixasset",
     "gh-cleanup": "node tools/gh-publish.mjs cleanup",
+    "gh-normalize": "node tools/gh-publish.mjs normalize",
     "gh-feed": "node tools/gh-publish.mjs feed",
     "check-hosting": "electron tools/check-hosting.js",
     "images": "node tools/make-images.mjs",
