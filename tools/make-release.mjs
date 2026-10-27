@@ -42,12 +42,17 @@ console.log('web/ собран: ' + WEB_ITEMS.join(', '));
 // --- 2. комплект itch.io ---
 fs.mkdirSync(ITCH, { recursive: true });
 
-const installer = path.join(ROOT, 'release', `Luna-IDE-Setup-${VERSION}.exe`);
-if (fs.existsSync(installer)) {
+// Установщик теперь собирается с постоянным именем (artifactName = Luna-IDE-Setup.exe),
+// а в комплектах itch/hosting удобнее версионное имя — переименовываем при копировании.
+const installer = [
+  path.join(ROOT, 'release', 'Luna-IDE-Setup.exe'),
+  path.join(ROOT, 'release', `Luna-IDE-Setup-${VERSION}.exe`)
+].find((p) => fs.existsSync(p));
+if (installer) {
   copy(installer, path.join(ITCH, `Luna-IDE-Setup-${VERSION}.exe`));
   console.log('itch/: установщик скопирован');
 } else {
-  console.warn('itch/: НЕТ установщика release\\Luna-IDE-Setup-' + VERSION + '.exe — сначала npm run installer');
+  console.warn('itch/: НЕТ установщика в release/ — сначала npm run installer');
 }
 
 zipDir(WEB, path.join(ITCH, `luna-ide-web-${VERSION}.zip`));

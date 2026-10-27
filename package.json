@@ -19,6 +19,9 @@
     "gh-pages": "node tools/gh-publish.mjs pages",
     "gh-release": "node tools/gh-publish.mjs release",
     "gh-meta": "node tools/gh-publish.mjs meta",
+    "gh-fix": "node tools/gh-publish.mjs fixasset",
+    "gh-cleanup": "node tools/gh-publish.mjs cleanup",
+    "gh-feed": "node tools/gh-publish.mjs feed",
     "check-hosting": "electron tools/check-hosting.js",
     "images": "node tools/make-images.mjs",
     "favicon": "node tools/make-favicon.mjs",
@@ -86,7 +89,7 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Луна IDE",
-      "artifactName": "Luna-IDE-Setup-${version}.exe",
+      "artifactName": "Luna-IDE-Setup.exe",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
       "installerLanguages": [

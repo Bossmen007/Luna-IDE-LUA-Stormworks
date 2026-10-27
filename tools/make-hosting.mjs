@@ -16,7 +16,10 @@ const OUT = path.join(ROOT, 'publish', 'hosting');
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const VERSION = pkg.version;
 const INSTALLER = `Luna-IDE-Setup-${VERSION}.exe`;
-const installerPath = path.join(ROOT, 'release', INSTALLER);
+const installerPath = [
+  path.join(ROOT, 'release', 'Luna-IDE-Setup.exe'),
+  path.join(ROOT, 'release', INSTALLER)
+].find((p) => fs.existsSync(p));
 
 if (!fs.existsSync(SITE)) {
   console.error('нет папки publish/site — сначала соберите лендинг');

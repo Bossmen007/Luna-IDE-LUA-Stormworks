@@ -10,6 +10,9 @@
  *   node tools/gh-publish.mjs upload          залить папку publish/github в репозиторий
  *   node tools/gh-publish.mjs pages           включить GitHub Pages (ветка main, папка /docs)
  *   node tools/gh-publish.mjs release         создать релиз v<версия> и приложить установщик
+ *   node tools/gh-publish.mjs fixasset        убрать из текущего релиза лишние дубли
+ *   node tools/gh-publish.mjs cleanup         убрать старые копии установщика из прошлых релизов
+ *   node tools/gh-publish.mjs feed            проверить живой latest.yml и файлы последнего релиза
  *
  * Владелец и репозиторий: переменные GITHUB_OWNER / GITHUB_REPO
  * (по умолчанию Bossmen007 / Luna-IDE-LUA-Stormworks).
@@ -273,11 +276,19 @@ async function cmdPages() {
 
 async function cmdRelease() {
   const tag = 'v' + VERSION;
-  const exe = path.join(ROOT, 'release', `Luna-IDE-Setup-${VERSION}.exe`);
+  // Имя установщика постоянное: оно же прописано в latest.yml (artifactName в package.json),
+  // поэтому автообновление качает ровно тот файл, на который ведёт releases/latest/download/…
+  const exe = path.join(ROOT, 'release', 'Luna-IDE-Setup.exe');
   const yml = path.join(ROOT, 'release', 'latest.yml');
   const blockMap = exe + '.blockmap';
   if (!fs.existsSync(exe)) { console.error('нет установщика: ' + exe + ' — сначала npm run installer'); process.exit(1); }
   if (!fs.existsSync(yml)) { console.error('нет latest.yml: ' + yml + ' — соберите установщик заново (npm run installer)'); process.exit(1); }
+  const ymlText = fs.readFileSync(yml, 'utf8');
+  if (ymlText.indexOf('Luna-IDE-Setup.exe') === -1) {
+    console.error('latest.yml ссылается не на Luna-IDE-Setup.exe:\n' + ymlText.split('\n').slice(0, 4).join('\n') +
+      '\nпроверьте build.nsis.artifactName и пересоберите установщик.');
+    process.exit(1);
+  }
 
   const chlog = changelogFor(VERSION);
   const notes = [
@@ -320,11 +331,9 @@ async function cmdRelease() {
     console.log('релиз ' + tag + ' создан');
   }
 
-  // В релизе три файла:
-  //  • Luna-IDE-Setup-<версия>.exe — его скачивает автообновление (имя из latest.yml);
-  //  • latest.yml — манифест версии для electron-updater;
-  //  • Luna-IDE-Setup.exe — копия с постоянным именем для постоянной ссылки сайта.
-  const versionedName = 'Luna-IDE-Setup-' + VERSION + '.exe';
+  // В релизе три файла: установщик с постоянным именем, latest.yml и .blockmap.
+  // Версия в имени файла больше не дублируется — иначе на каждый релиз уходило два
+  // одинаковых архива по 99 МБ (один для апдейтера, второй для постоянной ссылки).
   const assetName = 'Luna-IDE-Setup.exe';
   for (const a of rel.assets) {
     if (/^Luna-IDE-Setup.*\.exe$/i.test(a.name) || /^Luna-IDE-Setup.*\.blockmap$/i.test(a.name) || a.name === 'latest.yml') {
@@ -333,32 +342,30 @@ async function cmdRelease() {
     }
   }
   console.log('загружаю установщик (' + (fs.statSync(exe).size / 1048576).toFixed(1) + ' МБ)…');
-  const asset = await uploadAsset(rel.id, exe, versionedName);
-  console.log('  версия для автообновления: ' + asset.name);
+  const asset = await uploadAsset(rel.id, exe, assetName);
+  console.log('  установщик: ' + asset.name);
   const ymlAsset = await uploadAsset(rel.id, yml, 'latest.yml');
   console.log('  манифест: ' + ymlAsset.name);
   if (fs.existsSync(blockMap)) {
     const bm = await uploadAsset(rel.id, blockMap, path.basename(blockMap));
     console.log('  блоки для докачки: ' + bm.name);
   }
-  const alias = await uploadAsset(rel.id, exe, assetName);
-  console.log('  постоянная ссылка: ' + alias.name);
-  console.log('ссылки для скачивания:');
+  console.log('ссылка для скачивания:');
   console.log('  https://github.com/' + OWNER + '/' + REPO + '/releases/latest/download/' + assetName);
-  console.log('  https://github.com/' + OWNER + '/' + REPO + '/releases/latest/download/' + versionedName);
   console.log('страница релиза: ' + rel.html_url);
 }
 
-// Оставляет в релизе осмысленный набор: постоянная копия, версионный файл и latest.yml.
-// Лишние дубли (например, от прерванных заливок) удаляются через API.
+// Оставляет в релизе осмысленный набор: установщик, .blockmap и latest.yml.
+// Лишние дубли (например, от прерванных заливок или от старой схемы с двумя именами)
+// удаляются через API.
 async function cmdFixAsset() {
   const tag = 'v' + VERSION;
   let rel = await api(`/repos/${OWNER}/${REPO}/releases/tags/${tag}`);
   if (!rel.assets.length) { console.log('в релизе ' + tag + ' нет файлов'); return; }
-  const keep = ['Luna-IDE-Setup.exe', 'Luna-IDE-Setup-' + VERSION + '.exe', 'Luna-IDE-Setup-' + VERSION + '.exe.blockmap', 'latest.yml'];
+  const keep = ['Luna-IDE-Setup.exe', 'Luna-IDE-Setup.exe.blockmap', 'latest.yml'];
   let removed = 0;
   for (const a of rel.assets) {
-    if (/^Luna-IDE-Setup.*\.exe$/i.test(a.name) && keep.indexOf(a.name) === -1) {
+    if (/^Luna-IDE-Setup.*\.(exe|blockmap)$/i.test(a.name) && keep.indexOf(a.name) === -1) {
       await api(a.url, { method: 'DELETE' });
       console.log('удалён дубль ' + a.name);
       removed++;
@@ -368,6 +375,37 @@ async function cmdFixAsset() {
   rel = await api(`/repos/${OWNER}/${REPO}/releases/tags/${tag}`);
   console.log('файлов в релизе ' + tag + ': ' + rel.assets.length + ' (' + rel.assets.map((a) => a.name).join(', ') + ')');
   if (!rel.assets.some((a) => a.name === 'latest.yml')) console.log('ВНИМАНИЕ: latest.yml нет — автообновление не увидит версию');
+}
+
+// Чистка старых релизов от копий установщика: раньше в каждый релиз клали два одинаковых
+// файла по 99 МБ (Luna-IDE-Setup-<версия>.exe для апдейтера и Luna-IDE-Setup.exe для
+// постоянной ссылки). Постоянная копия нужна ТОЛЬКО в последнем релизе, остальные — балласт.
+// Удаляем её из старых релизов, но лишь там, где рядом лежит версионный установщик:
+// релизы 1.1.0/1.2.0 состоят из одной копии, её не трогаем — иначе нечего будет скачать.
+async function cmdCleanup() {
+  const releases = await api(`/repos/${OWNER}/${REPO}/releases?per_page=100`);
+  if (!releases.length) { console.log('релизов нет'); return; }
+  const latest = await api(`/repos/${OWNER}/${REPO}/releases/latest`).catch(() => null);
+  let freed = 0, removed = 0;
+  for (const rel of releases) {
+    const isLatest = latest && rel.id === latest.id;
+    const constant = rel.assets.find((a) => a.name === 'Luna-IDE-Setup.exe');
+    const versioned = rel.assets.find((a) => /^Luna-IDE-Setup-.+\.exe$/i.test(a.name));
+    if (!constant) continue;
+    if (isLatest) {
+      console.log(rel.tag_name + ': последний релиз — копию ' + constant.name + ' оставляем (постоянная ссылка)');
+      continue;
+    }
+    if (!versioned) {
+      console.log(rel.tag_name + ': единственный установщик — оставляем');
+      continue;
+    }
+    await api(constant.url, { method: 'DELETE' });
+    freed += constant.size;
+    removed++;
+    console.log(rel.tag_name + ': удалён дубль ' + constant.name + ' (' + (constant.size / 1048576).toFixed(1) + ' МБ), остался ' + versioned.name);
+  }
+  console.log(removed ? 'освобождено ' + (freed / 1048576).toFixed(1) + ' МБ' : 'дублей нет');
 }
 
 async function cmdMeta() {
@@ -390,6 +428,48 @@ async function cmdMeta() {
   console.log('домашняя страница: ' + homepage);
 }
 
+// Проверка живого фида автообновления: latest.yml в последнем релизе должен ссылаться
+// на файл, который реально лежит в этом релизе, с тем же размером и sha512.
+// Токен не нужен — репозиторий публичный.
+async function cmdFeed() {
+  const base = 'https://github.com/' + OWNER + '/' + REPO + '/releases/latest/download/';
+  const res = await fetch(base + 'latest.yml');
+  if (!res.ok) { console.error('не удалось скачать latest.yml: HTTP ' + res.status); process.exit(1); }
+  const yml = await res.text();
+  const get = (re) => { const m = yml.match(re); return m ? m[1].trim() : ''; };
+  const version = get(/^version:\s*(.+)$/m);
+  const url = get(/^\s*-?\s*url:\s*(.+)$/m);
+  const sha512 = get(/^\s*sha512:\s*(.+)$/m);
+  const size = Number(get(/^\s*size:\s*(\d+)$/m));
+
+  const rel = await api(`/repos/${OWNER}/${REPO}/releases/latest`);
+  const asset = rel.assets.find((a) => a.name === url);
+  const blockmap = rel.assets.find((a) => a.name === url + '.blockmap');
+  const pkgVersion = pkg.version;
+
+  console.log('фид: версия ' + version + ', файл ' + url + ', ' + (size / 1048576).toFixed(1) + ' МБ');
+  console.log('релиз: ' + rel.tag_name + ', файлов ' + rel.assets.length + ': ' + rel.assets.map((a) => a.name).join(', '));
+  console.log('в package.json: ' + pkgVersion);
+
+  const checks = {
+    'latest.yml прочитан': !!version && !!url,
+    'файл из latest.yml есть в релизе': !!asset,
+    'размер совпадает': !!asset && asset.size === size,
+    'sha512 заполнен': /^[A-Za-z0-9+/=]{40,}$/.test(sha512),
+    'есть .blockmap для докачки': !!blockmap,
+    'версия в latest.yml = тег релиза': rel.tag_name === 'v' + version,
+    'версия не отстаёт от package.json': version >= pkgVersion
+  };
+  let ok = true;
+  Object.keys(checks).forEach((k) => {
+    if (!checks[k]) ok = false;
+    console.log((checks[k] ? '  OK  ' : '  ПЛОХО ') + k);
+  });
+  console.log('ссылка: ' + base + url);
+  console.log(ok ? 'РЕЗУЛЬТАТ: OK' : 'РЕЗУЛЬТАТ: ПРОВАЛ');
+  if (!ok) process.exit(1);
+}
+
 const [cmd, arg] = process.argv.slice(2);
 try {
   if (cmd === 'upload') await cmdUpload(arg);
@@ -397,9 +477,11 @@ try {
   else if (cmd === 'release') await cmdRelease();
   else if (cmd === 'meta') await cmdMeta();
   else if (cmd === 'fixasset') await cmdFixAsset();
+  else if (cmd === 'cleanup') await cmdCleanup();
+  else if (cmd === 'feed') await cmdFeed();
   else if (cmd === 'status') await cmdStatus();
   else {
-    console.log('Команды: status | upload [папка] | pages | release | meta | fixasset');
+    console.log('Команды: status | upload [папка] | pages | release | meta | fixasset | cleanup | feed');
     console.log('Пример: node tools/gh-publish.mjs upload');
   }
 } catch (e) {
