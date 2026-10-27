@@ -54,12 +54,12 @@
   // 1 блок = 32×32 пикселя. Названия соответствуют компонентам в игре.
   var MONITORS = [
     { label: 'Monitor 1×1', w: 32, h: 32 },
-    { label: 'Monitor 1×2', w: 32, h: 64 },
-    { label: 'Monitor 1×3', w: 32, h: 96 },
+    { label: 'Monitor 2×1', w: 64, h: 32 },
     { label: 'Monitor 2×2', w: 64, h: 64 },
-    { label: 'Monitor 2×3', w: 64, h: 96 },
+    { label: 'Monitor 3×1', w: 96, h: 32 },
+    { label: 'Monitor 3×2', w: 96, h: 64 },
     { label: 'Monitor 3×3 / HUD 3×3', w: 96, h: 96 },
-    { label: 'Monitor 3×5', w: 160, h: 96 },
+    { label: 'Monitor 5×3', w: 160, h: 96 },
     { label: 'Monitor 9×5', w: 288, h: 160 }
   ];
   global.LUNA_MONITORS = MONITORS;   // используется конструктором интерфейса

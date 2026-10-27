@@ -31,7 +31,7 @@
 
 Отдельное окно со своим меню, без браузера и адресной строки.
 
-1. Установить: запустить `release\Luna-IDE-Setup-1.3.0.exe` и следовать шагам
+1. Установить: запустить `release\Luna-IDE-Setup-1.3.1.exe` и следовать шагам
    (без установки — `dist\Luna IDE-win32-x64\Luna IDE.exe`).
 2. Ярлык **«Луна IDE»** на рабочем столе — двойной клик.
 3. Напишите скрипт и нажмите **▶ Запустить** (или `F5`).
@@ -56,7 +56,7 @@ npm install            :: один раз (Electron ~110 МБ + electron-builder
 npm start              :: запуск в режиме разработки
 npm ci                 :: чистая установка по package-lock.json (для сборки на GitHub)
 
-npm run installer      :: установщик      -> release\Luna-IDE-Setup-1.3.0.exe
+npm run installer      :: установщик      -> release\Luna-IDE-Setup-1.3.1.exe
 npm run dist           :: portable-папка  -> dist\Luna IDE-win32-x64\Luna IDE.exe
 npm run shots          :: скриншоты интерфейса   -> publish\shots\
 npm run images         :: обложки нужных размеров

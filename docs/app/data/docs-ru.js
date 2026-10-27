@@ -111,12 +111,12 @@ window.LUNA_DOCS = [
           '<tr><td>HUD 1×1</td><td>32 × 32</td></tr>' +
           '<tr><td>HUD 3×3</td><td>96 × 96</td></tr>' +
           '<tr><td>Monitor 1×1</td><td>32 × 32</td></tr>' +
-          '<tr><td>Monitor 1×2</td><td>32 × 64</td></tr>' +
-          '<tr><td>Monitor 1×3</td><td>32 × 96</td></tr>' +
+          '<tr><td>Monitor 2×1</td><td>64 × 32</td></tr>' +
           '<tr><td>Monitor 2×2</td><td>64 × 64</td></tr>' +
-          '<tr><td>Monitor 2×3</td><td>64 × 96</td></tr>' +
+          '<tr><td>Monitor 3×1</td><td>96 × 32</td></tr>' +
+          '<tr><td>Monitor 3×2</td><td>96 × 64</td></tr>' +
           '<tr><td>Monitor 3×3</td><td>96 × 96</td></tr>' +
-          '<tr><td>Monitor 3×5</td><td>160 × 96</td></tr>' +
+          '<tr><td>Monitor 5×3</td><td>160 × 96</td></tr>' +
           '<tr><td>Monitor 9×5</td><td>288 × 160</td></tr></table>' +
           '<p>Готовые размеры можно выбрать в панели «Монитор» → «Разрешение монитора», либо задать своё (поле «Другой размер…»).</p>' +
           '<div class="callout">Разрешение монитора — это <b>число пикселей</b>, которое видит скрипт через <code>screen.getWidth()</code> и <code>screen.getHeight()</code>. Кнопки масштаба в IDE (Вписать / 1:1 / ＋ / − / «Во весь экран», колесо мыши с Ctrl) меняют только <b>вид</b> и на скрипт не влияют. Масштаб запоминается отдельно для каждого разрешения — вернувшись к размеру, вы увидите его в прежнем виде.</div>'

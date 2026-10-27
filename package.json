@@ -1,7 +1,7 @@
 {
   "name": "luna-ide",
   "productName": "Luna IDE",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Луна IDE — русский редактор Lua для Stormworks: Build and Rescue",
   "author": "СтаричЁк",
   "license": "MIT",
@@ -9,7 +9,7 @@
   "scripts": {
     "start": "electron .",
     "icon": "node build/make-icon.mjs",
-    "dist": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --icon=build/icon.ico --app-version=1.3.0 --ignore=\"^/dist\" --ignore=\"^/node_modules\" --ignore=\"^/release\" --ignore=\"^/publish\" --ignore=\"^/_shot\"",
+    "dist": "electron-packager . --platform=win32 --arch=x64 --out=dist --overwrite --icon=build/icon.ico --app-version=1.3.1 --ignore=\"^/dist\" --ignore=\"^/node_modules\" --ignore=\"^/release\" --ignore=\"^/publish\" --ignore=\"^/_shot\"",
     "installer": "electron-builder --win nsis",
     "release-files": "node tools/make-release.mjs",
     "hosting": "node tools/make-hosting.mjs",
@@ -29,6 +29,7 @@
     "check-anim": "electron tools/check-anim.js",
     "check-update": "electron tools/check-update.js",
     "check-live": "electron tools/check-live.js",
+    "check-monitors": "electron tools/check-monitors.js",
     "history": "node tools/export-history.mjs",
     "tg-check": "node tools/tg-post.mjs check",
     "tg-post": "node tools/tg-post.mjs send"
