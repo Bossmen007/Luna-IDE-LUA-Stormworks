@@ -346,6 +346,14 @@
    собирать `npm run installer` (появится новый `latest.yml`), затем
    `release-files → github → gh-upload → gh-release`. Установленные 1.2.0 и ниже
    обновиться сами не смогут — им нужна одна ручная установка 1.3.0.
+5. **Публикация выполнена.** `gh-upload` — 97 файлов, коммит `afcace730d`;
+   `gh-release` — тег `v1.3.0`, 4 ассета (версионный exe, `latest.yml`, блокмап,
+   копия `Luna-IDE-Setup.exe`). Проверено живьём: `releases/latest/download/latest.yml`
+   отдаёт 1.3.0 с тем же sha512, версионный exe — 200 и 103 975 277 байт;
+   `check-live` на GitHub Pages — плашка 1.3.0, кнопка ведёт на постоянную ссылку.
+   Пост в `@luna_ide` — https://t.me/luna_ide/9 (id 9).
+   Попутно: `check-ui` теперь берёт версию из `package.json` (было жёстко 1.2.0),
+   в `package.json` добавлен отсутствовавший скрипт `check-live`.
 
 
 

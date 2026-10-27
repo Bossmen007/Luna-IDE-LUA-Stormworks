@@ -28,6 +28,7 @@
     "check-io": "electron tools/check-io.js",
     "check-anim": "electron tools/check-anim.js",
     "check-update": "electron tools/check-update.js",
+    "check-live": "electron tools/check-live.js",
     "history": "node tools/export-history.mjs",
     "tg-check": "node tools/tg-post.mjs check",
     "tg-post": "node tools/tg-post.mjs send"

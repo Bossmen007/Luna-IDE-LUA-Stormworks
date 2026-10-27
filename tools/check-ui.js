@@ -8,6 +8,8 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const VERSION = require('../package.json').version;
+const VER_RE = new RegExp(VERSION.replace(/\./g, '\\.'));
 
 app.disableHardwareAcceleration();
 
@@ -49,7 +51,7 @@ app.whenReady().then(async () => {
   console.log('лендинг, плашка версии: ' + site1.pill);
 
   const ok = app1.tgExists && app1.tgHref === 'https://t.me/luna_ide' && app1.tgTarget === '_blank' &&
-             app1.settingsTg && app1.donateTg && site1.tgLinks >= 3 && /1\.2\.0/.test(site1.pill) &&
+             app1.settingsTg && app1.donateTg && site1.tgLinks >= 3 && VER_RE.test(site1.pill) &&
              errors.length === 0;
   if (errors.length) console.log('ОШИБКИ КОНСОЛИ: ' + JSON.stringify(errors.slice(0, 5)));
   console.log(ok ? 'РЕЗУЛЬТАТ: OK' : 'РЕЗУЛЬТАТ: ПРОВАЛ');
