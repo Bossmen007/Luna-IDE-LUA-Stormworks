@@ -85,9 +85,18 @@
   function addConsole(msg) {
     var text = (typeof msg === 'string') ? msg : msg.text;
     var cls = (typeof msg === 'string') ? '' : (msg.css || '');
+    var lineNo = (typeof msg === 'string') ? 0 : (msg.line || 0);
     var line = document.createElement('div');
     line.className = 'con-line ' + cls;
     line.textContent = text;
+    if (lineNo) {
+      line.classList.add('con-link');
+      line.title = 'Перейти к строке ' + lineNo;
+      var warn = (typeof msg === 'object') && msg.warn;
+      line.addEventListener('click', function () {
+        if (warn) markWarnLine(lineNo); else markErrorLine(lineNo);
+      });
+    }
     el.console.appendChild(line);
     while (el.console.childNodes.length > 500) el.console.removeChild(el.console.firstChild);
     el.console.scrollTop = el.console.scrollHeight;
@@ -95,6 +104,153 @@
   function clearConsole() { el.console.innerHTML = ''; }
   function conError(text) { addConsole({ text: '✖ ' + text, css: 'err' }); }
   function conInfo(text) { addConsole({ text: '• ' + text, css: 'info' }); }
+
+  // ---------- ошибки Lua: строка + подсветка ----------
+  var errLineHandle = null;
+
+  // Fengari пишет ошибку как `[string "..."]:12: сообщение` — вытаскиваем номер строки.
+  function luaErrorLine(text) {
+    var m = /\[string "[^"]*"\]:(\d+):/.exec(String(text));
+    if (!m) m = /:(\d+):\s/.exec(String(text));
+    return m ? parseInt(m[1], 10) : 0;
+  }
+
+  function markErrorLine(n) {
+    if (!cm) return;
+    if (errLineHandle) {
+      cm.removeLineClass(errLineHandle, 'background', 'cm-error-line');
+      cm.removeLineClass(errLineHandle, 'background', 'cm-warn-line');
+      errLineHandle = null;
+    }
+    if (!n || n < 1 || n > cm.lineCount()) return;
+    errLineHandle = cm.addLineClass(n - 1, 'background', 'cm-error-line');
+    cm.setCursor({ line: n - 1, ch: 0 });
+    cm.scrollIntoView({ line: Math.max(0, n - 1), ch: 0 }, 120);
+    cm.focus();
+  }
+
+  // предупреждение линта — та же механика, только жёлтая подсветка
+  function markWarnLine(n) {
+    if (!cm) return;
+    if (errLineHandle) {
+      cm.removeLineClass(errLineHandle, 'background', 'cm-error-line');
+      cm.removeLineClass(errLineHandle, 'background', 'cm-warn-line');
+      errLineHandle = null;
+    }
+    if (!n || n < 1 || n > cm.lineCount()) return;
+    errLineHandle = cm.addLineClass(n - 1, 'background', 'cm-warn-line');
+    cm.setCursor({ line: n - 1, ch: 0 });
+    cm.scrollIntoView({ line: Math.max(0, n - 1), ch: 0 }, 120);
+    cm.focus();
+  }
+
+  function clearErrorLine() {
+    if (cm && errLineHandle) { cm.removeLineClass(errLineHandle, 'background', 'cm-error-line'); errLineHandle = null; }
+  }
+
+  // Сообщение об ошибке: в консоль (кликабельно) + подсветка строки в редакторе.
+  function reportLuaError(where, err) {
+    var line = luaErrorLine(err);
+    var text = (where ? where + ': ' : '') + err + (line ? '  [строка ' + line + ']' : '');
+    addConsole({ text: '✖ ' + text, css: 'err', line: line });
+    if (line) markErrorLine(line);
+  }
+
+  // ---------- линт: проверка кода перед запуском ----------
+  function lintCode(silent) {
+    if (!global.LunaLint) return [];
+    var res = global.LunaLint.check(cm.getValue());
+    if (!res.length) {
+      if (!silent) conInfo('Проверка: замечаний нет.');
+      return res;
+    }
+    var shown = res.slice(0, 12);
+    shown.forEach(function (w) {
+      var isErr = w.level === 'error';
+      addConsole({
+        text: (isErr ? '✖ ' : '⚠ ') + w.message + '  [строка ' + w.line + ']',
+        css: isErr ? 'err' : 'warn',
+        line: w.line,
+        warn: !isErr
+      });
+    });
+    if (res.length > shown.length) conInfo('…и ещё ' + (res.length - shown.length) + ' замечаний.');
+    if (!silent) {
+      switchSide('console');   // чтобы замечания были видны, а не «где-то в консоли»
+      var first = res[0];
+      if (first.level === 'error') markErrorLine(first.line); else markWarnLine(first.line);
+    }
+    return res;
+  }
+
+  // ---------- автодополнение: подсказки API ----------
+  var HINTS = (typeof window !== 'undefined' && window.LUNA_HINTS) ? window.LUNA_HINTS : null;
+
+  function hintItem(name, sig, doc) {
+    return {
+      text: name,
+      displayText: name + (sig || ''),
+      doc: doc || '',
+      className: 'luna-hint-item',
+      render: function (el, self, data) {
+        var head = document.createElement('span');
+        head.className = 'lh-name';
+        head.textContent = data.displayText || data.text;
+        el.appendChild(head);
+        if (data.doc) {
+          var d = document.createElement('span');
+          d.className = 'lh-doc';
+          d.textContent = data.doc;
+          el.appendChild(d);
+        }
+      }
+    };
+  }
+
+  function hintListFor(prefix) {
+    if (!HINTS) return [];
+    var dot = prefix.lastIndexOf('.');
+    if (dot >= 0) {
+      var obj = prefix.slice(0, dot).split('.').pop();
+      var part = prefix.slice(dot + 1).toLowerCase();
+      var group = HINTS.objects && HINTS.objects[obj];
+      if (!group) return [];
+      return group.items.filter(function (it) {
+        return it.name.toLowerCase().indexOf(part) === 0;
+      }).map(function (it) { return hintItem(it.name, it.sig, it.doc); });
+    }
+    var low = prefix.toLowerCase();
+    var out = [];
+    (HINTS.globals || []).forEach(function (g) {
+      if (g.name.toLowerCase().indexOf(low) === 0) out.push(hintItem(g.name, g.sig, g.doc));
+    });
+    (HINTS.keywords || []).forEach(function (k) {
+      if (k.indexOf(prefix) === 0) out.push({ text: k, displayText: k, className: 'luna-hint-item kw' });
+    });
+    return out;
+  }
+
+  // Источник подсказок для CodeMirror: смотрит слово перед курсором.
+  function lunaHint(cm) {
+    var cur = cm.getCursor();
+    var token = cm.getTokenAt(cur, true);
+    var type = (token && token.type) || '';
+    // в строке и комментарии подсказки не мешают
+    if (type.indexOf('string') === 0 || type.indexOf('comment') === 0) return null;
+    var line = cm.getLine(cur.line).slice(0, cur.ch);
+    var m = /([A-Za-z_][\w.]*)$/.exec(line);
+    var prefix = m ? m[1] : '';
+    var list = hintListFor(prefix);
+    if (!list.length) return null;
+    return {
+      list: list,
+      from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
+      to: CodeMirror.Pos(cur.line, cur.ch)
+    };
+  }
+
+  function showLunaHint(cm) { cm.showHint({ hint: lunaHint, completeSingle: false }); }
+
 
   // ---------- настройки ----------
   function applySettings() {
@@ -395,11 +551,25 @@
         'Ctrl-/': 'toggleComment', 'Cmd-/': 'toggleComment',
         'F5': runCode, 'Ctrl-Enter': runCode, 'Cmd-Enter': runCode,
         'Ctrl-F': 'findPersistent', 'Shift-Ctrl-F': 'replace', 'Alt-F': 'findPersistent',
-        'Ctrl-Space': 'autocomplete'
+        'Ctrl-Space': function () { showLunaHint(cm); },
+        'F7': function () { clearConsole(); lintCode(false); }
       }
     });
     var saved = localStorage.getItem(AUTOSAVE_KEY);
     cm.setValue(saved && saved.length > 0 ? saved : DEFAULT_CODE);
+
+    // подсказки API: показываем сами сразу после точки у известного объекта (screen., input.…)
+    cm.on('inputRead', function (cm, ch) {
+      var typed = (ch.text && ch.text[0]) || '';
+      if (typed !== '.') return;
+      var cur = cm.getCursor();
+      var before = cm.getLine(cur.line).slice(0, Math.max(0, cur.ch - 1));
+      var m = /([A-Za-z_][\w.]*)\s*$/.exec(before);
+      if (!m) return;
+      var obj = m[1].split('.').pop();
+      if (!HINTS || !HINTS.objects || !HINTS.objects[obj]) return;
+      setTimeout(function () { showLunaHint(cm); }, 0);
+    });
 
     // жёсткий лимит: не даём ввести больше 8192 символов (как в игре)
     cm.on('beforeChange', function (cm, ch) {
@@ -516,11 +686,13 @@
     applyInputsFromRows();   // возвращаем значения, введённые пользователем в панели «Композит»
     runtime.maxInstructions = settings.maxInstructions;
 
+    clearErrorLine();
+    lintCode(true);          // замечания линта — в консоль, запуск не блокируем
     var res = runtime.compile(cm.getValue());
-    if (!res.ok) { conError(res.error); return; }
+    if (!res.ok) { reportLuaError('Компиляция', res.error); return; }
     swScreen.clear();
     var r = runtime.runInit();
-    if (!r.ok) { conError(r.error); return; }
+    if (!r.ok) { reportLuaError('Инициализация', r.error); return; }
 
     hasTick = runtime.hasFunction('onTick');
     hasDraw = runtime.hasFunction('onDraw');
@@ -546,13 +718,13 @@
     advanceAnim();
     if (hasTick) {
       var r1 = runtime.call('onTick');
-      if (!r1.ok) { conError('Ошибка в onTick: ' + r1.error); stopRun(); return; }
+      if (!r1.ok) { reportLuaError('Ошибка в onTick', r1.error); stopRun(); return; }
       tickCount++;
     }
     swScreen.clear();
     if (hasDraw) {
       var r2 = runtime.call('onDraw');
-      if (!r2.ok) { conError('Ошибка в onDraw: ' + r2.error); stopRun(); return; }
+      if (!r2.ok) { reportLuaError('Ошибка в onDraw', r2.error); stopRun(); return; }
     }
     updateIOOutputs();
     if (tickCount % 30 === 0) el.runtimeInfo.textContent = 'Тиков: ' + tickCount;
@@ -563,10 +735,10 @@
     if (!runtime) return;
     if (!running) {
       var res = runtime.compile(cm.getValue());
-      if (!res.ok) { conError(res.error); return; }
+      if (!res.ok) { reportLuaError('Компиляция', res.error); return; }
       swScreen.clear();
       var r = runtime.runInit();
-      if (!r.ok) { conError(r.error); return; }
+      if (!r.ok) { reportLuaError('Инициализация', r.error); return; }
       hasTick = runtime.hasFunction('onTick');
       hasDraw = runtime.hasFunction('onDraw');
       if (!hasTick && !hasDraw) { conInfo('Нет onTick()/onDraw().'); return; }
@@ -574,9 +746,9 @@
     }
     stopLoopOnly();
     advanceAnim();
-    if (hasTick) { var r1 = runtime.call('onTick'); if (!r1.ok) { conError('onTick: ' + r1.error); return; } tickCount++; }
+    if (hasTick) { var r1 = runtime.call('onTick'); if (!r1.ok) { reportLuaError('onTick', r1.error); return; } tickCount++; }
     swScreen.clear();
-    if (hasDraw) { var r2 = runtime.call('onDraw'); if (!r2.ok) { conError('onDraw: ' + r2.error); return; } }
+    if (hasDraw) { var r2 = runtime.call('onDraw'); if (!r2.ok) { reportLuaError('onDraw', r2.error); return; } }
     updateIOOutputs();
     el.runtimeInfo.textContent = 'Тиков: ' + tickCount;
   }
@@ -1193,6 +1365,7 @@
       runtimeInfo: $('runtimeInfo'),
       charCount: $('charCount'),
       limitHint: $('limitHint'),
+      btnLint: $('btnLint'),
       btnDonate: $('btnDonate'),
       inpDonate: $('inpDonate'),
       btnRun: $('btnRun'),
@@ -1272,6 +1445,7 @@
     el.btnStop.onclick = function () { stopRun(); };
     el.btnStep.onclick = step;
     $('btnMinify').onclick = minifyCode;
+    if ($('btnLint')) $('btnLint').onclick = function () { clearConsole(); lintCode(false); };
     $('btnShare').onclick = share;
     $('btnSave').onclick = saveDraft;
     $('btnOpen').onclick = openDrafts;

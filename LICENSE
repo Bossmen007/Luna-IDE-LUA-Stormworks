@@ -1,26 +1,41 @@
-MIT License
+ЛИЦЕНЗИЯ: FREEWARE (бесплатное использование)
 
-Copyright (c) 2026 СтаричЁк
+Луна IDE © 2026 СтаричЁк. Все права защищены.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Разрешается:
+  • бесплатно использовать программу — в личных, учебных и рабочих целях,
+    в том числе для создания скриптов и контента для Stormworks;
+  • устанавливать её на любое число своих компьютеров;
+  • передавать неизменённую копию установщика вместе с этим файлом.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Запрещается без письменного разрешения автора:
+  • изменять программу, декомпилировать её или создавать производные версии;
+  • распространять изменённые копии, а также публиковать программу под другим именем;
+  • продавать программу или брать плату за её распространение и установку;
+  • удалять или скрывать уведомления об авторских правах.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
----
+Программа предоставляется «как есть», без каких-либо гарантий. Автор не несёт
+ответственности за любые последствия её использования, включая потерю данных
+или повреждение сохранений игры.
 
 Игра Stormworks: Build and Rescue и её API принадлежат их разработчикам.
-Луна IDE — неофициальный инструмент сообщества, не связанный с разработчиками игры.
+«Луна IDE» — неофициальный инструмент сообщества, не связанный с разработчиками игры.
+
+
+------------------------------------------------------------------
+
+FREEWARE LICENSE (short English version)
+
+Luna IDE © 2026 Starichyok. All rights reserved.
+
+You may use this software free of charge on any number of your own computers and
+pass on an unmodified copy of the installer together with this license.
+
+You may not modify, decompile or create derivative works, redistribute modified
+copies or builds under another name, sell the software or charge for its
+distribution, or remove copyright notices — without written permission from
+the author.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. THE AUTHOR IS NOT
+LIABLE FOR ANY DAMAGES ARISING FROM ITS USE. Stormworks: Build and Rescue and its
+API belong to their respective owners; Luna IDE is an unofficial community tool.

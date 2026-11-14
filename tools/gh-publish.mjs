@@ -12,6 +12,7 @@
  *   node tools/gh-publish.mjs release         создать релиз v<версия> и приложить установщик
  *   node tools/gh-publish.mjs fixasset        убрать из текущего релиза лишние дубли
  *   node tools/gh-publish.mjs cleanup         убрать старые копии установщика из прошлых релизов
+ *   node tools/gh-publish.mjs purge           удалить все релизы, кроме последнего (со старыми файлами)
  *   node tools/gh-publish.mjs normalize       свести релиз со двумя копиями к одной (старая схема → новая)
  *   node tools/gh-publish.mjs feed            проверить живой latest.yml и файлы последнего релиза
  *
@@ -353,6 +354,8 @@ async function cmdRelease() {
   }
   console.log('ссылка для скачивания:');
   console.log('  https://github.com/' + OWNER + '/' + REPO + '/releases/latest/download/' + assetName);
+  // Старые релизы больше не нужны: поддерживаем только актуальную версию.
+  await purgeOtherReleases(rel.id);
   console.log('страница релиза: ' + rel.html_url);
 }
 
@@ -500,6 +503,25 @@ async function cmdNormalize() {
   console.log(changed ? 'нормализовано релизов: ' + changed : 'нечего нормализовать');
 }
 
+// Оставляем на GitHub только актуальный релиз: старые релизы вместе с файлами и тегами
+// удаляются. Так у пользователя ровно один установщик — последней версии, без старых сборок.
+async function purgeOtherReleases(keepId) {
+  const rels = await api(`/repos/${OWNER}/${REPO}/releases?per_page=100`);
+  let removed = 0;
+  for (const r of rels) {
+    if (keepId && r.id === keepId) continue;
+    await api(`/repos/${OWNER}/${REPO}/releases/${r.id}`, { method: 'DELETE' });
+    console.log('  удалён старый релиз ' + r.tag_name + ' (' + r.assets.length + ' файлов)');
+    removed++;
+    try {
+      await api(`/repos/${OWNER}/${REPO}/git/refs/tags/${encodeURIComponent(r.tag_name)}`, { method: 'DELETE' });
+    } catch (e) {
+      console.log('    тег ' + r.tag_name + ' не удалён: ' + e.message);
+    }
+  }
+  console.log(removed ? '  очищено старых релизов: ' + removed : '  старых релизов нет');
+}
+
 // Проверка живого фида автообновления: latest.yml в последнем релизе должен ссылаться
 // на файл, который реально лежит в этом релизе, с тем же размером и sha512.
 // Токен не нужен — репозиторий публичный.
@@ -551,10 +573,11 @@ try {
   else if (cmd === 'fixasset') await cmdFixAsset();
   else if (cmd === 'cleanup') await cmdCleanup();
   else if (cmd === 'normalize') await cmdNormalize();
+  else if (cmd === 'purge') await purgeOtherReleases(null);
   else if (cmd === 'feed') await cmdFeed();
   else if (cmd === 'status') await cmdStatus();
   else {
-    console.log('Команды: status | upload [папка] | pages | release | meta | fixasset | cleanup | normalize | feed');
+    console.log('Команды: status | upload [папка] | pages | release | meta | fixasset | cleanup | normalize | purge | feed');
     console.log('Пример: node tools/gh-publish.mjs upload');
   }
 } catch (e) {

@@ -366,3 +366,40 @@ a.btn { text-decoration: none; display: inline-flex; align-items: center; gap: 6
 .fld-chk input[type="checkbox"] { width: auto; height: auto; }
 .builder-code textarea { white-space: pre; overflow: auto; }
 
+
+/* ---------- подсказки API в редакторе (CodeMirror hint) ---------- */
+.CodeMirror-hints {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .45);
+  padding: 4px;
+  max-height: 260px;
+  font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+  font-size: 12px;
+  z-index: 60;
+}
+.CodeMirror-hint {
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.CodeMirror-hint-active { background: rgba(90, 209, 255, .18); color: var(--text); }
+.luna-hint-item { display: flex; gap: 10px; align-items: baseline; }
+.luna-hint-item .lh-name { color: var(--accent); }
+.luna-hint-item .lh-doc { color: var(--muted); font-size: 11px; }
+.luna-hint-item.kw .lh-name { color: var(--accent2); }
+
+/* строка, на которой упал скрипт */
+.cm-error-line { background: rgba(255, 107, 107, .14); }
+
+/* строка с замечанием линта */
+.cm-warn-line { background: rgba(233, 185, 73, .13); }
+
+/* строка предупреждения в консоли */
+.con-line.warn { color: var(--yellow); }
+
+/* кликабельная ошибка в консоли */
+.con-line.con-link { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px; }
+.con-line.con-link:hover { color: var(--accent); }

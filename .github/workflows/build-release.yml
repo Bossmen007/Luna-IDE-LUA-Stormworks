@@ -40,22 +40,31 @@ jobs:
         # Без этого флага electron-builder сам пробует «опубликовать» и падает без токена.
         run: npx electron-builder --win nsis --publish never
 
-      # Постоянное имя: ссылка .../releases/latest/download/Luna-IDE-Setup.exe
-      # не меняется от версии к версии и используется страницей проекта.
-      # В релиз прикладываем РОВНО один файл — без дублей с версией в имени.
-      - name: Дать установщику постоянное имя
-        run: copy release\Luna-IDE-Setup-*.exe release\Luna-IDE-Setup.exe
+      # Имя установщика постоянное (build.nsis.artifactName = Luna-IDE-Setup.exe),
+      # поэтому ссылка .../releases/latest/download/Luna-IDE-Setup.exe не меняется,
+      # а latest.yml ссылается на то же имя. К релизу прикладываем три файла:
+      # установщик, манифест версии и блокмап для докачки. Переименовывать ничего не нужно.
+      - name: Проверить имена файлов сборки
+        run: |
+          if (!(Test-Path release\Luna-IDE-Setup.exe)) { throw "нет release\Luna-IDE-Setup.exe — проверьте build.nsis.artifactName" }
+          if (!(Test-Path release\latest.yml)) { throw "нет release\latest.yml — без него автообновление не увидит версию" }
+          if (-not (Select-String -Path release\latest.yml -Pattern "url: Luna-IDE-Setup.exe" -Quiet)) { throw "latest.yml ссылается на другое имя файла" }
 
-      - name: Приложить файл к релизу
+      - name: Приложить файлы к релизу
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: release/Luna-IDE-Setup.exe
+          files: |
+            release/Luna-IDE-Setup.exe
+            release/Luna-IDE-Setup.exe.blockmap
+            release/latest.yml
 
-      - name: Сохранить установщик как артефакт (для ручного запуска)
+      - name: Сохранить файлы как артефакт (для ручного запуска)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: Luna-IDE-Setup
-          path: release/Luna-IDE-Setup.exe
+          path: |
+            release/Luna-IDE-Setup.exe
+            release/latest.yml
           retention-days: 14

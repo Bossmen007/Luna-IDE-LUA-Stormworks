@@ -127,6 +127,7 @@ function showAbout() {
       'Версия ' + app.getVersion() + '\n' +
       'Lua 5.3 (Fengari) · CodeMirror 5\n\n' +
       'Работает полностью офлайн.\n' +
+      'Лицензия: freeware (бесплатное использование).\n' +
       'Неофициальный инструмент, не связанный с разработчиками Stormworks.',
     buttons: ['ОК']
   });

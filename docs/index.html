@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
@@ -121,7 +121,7 @@
 <div class="hero">
   <div class="bg" role="img" aria-label="Тёмный интерфейс приборной панели с луной"></div>
   <div class="wrap">
-    <span class="pill">Версия 1.3.1 · Windows 10/11 · работает офлайн</span>
+    <span class="pill">Версия 1.4.0 · Windows 10/11 · работает офлайн</span>
     <h1>Редактор Lua для Stormworks — полностью на русском</h1>
     <p class="lead">Пишите, запускайте и отлаживайте скрипты для микроконтроллеров Stormworks,
       не зная английского. Реальный интерпретатор Lua 5.3, виртуальный монитор, справочник API,
@@ -176,28 +176,31 @@
 
 <section id="news">
   <div class="wrap">
-    <h2>Что нового в версии 1.3.1</h2>
+    <h2>Что нового в версии 1.4.0</h2>
     <div class="grid g2">
+      <div class="card"><span class="ico">💡</span><h3>Подсказки API в редакторе</h3>
+        <p>Ctrl+Space — и редактор показывает функции с сигнатурой и объяснением по-русски;
+          после точки у <code>screen.</code>, <code>input.</code>, <code>output.</code> список
+          открывается сам. Справочник теперь под рукой, а не в отдельной вкладке.</p></div>
+      <div class="card"><span class="ico">🧪</span><h3>Проверка кода перед запуском</h3>
+        <p>IDE замечает то, что в игре выстрелит молча: кириллицу в тексте для монитора
+          (шрифт игры её не рисует), канал вне 1–32, опечатку в имени метода
+          <code>screen.*</code>, <code>local function onTick</code>. Кнопка «Проверить», F7
+          и автопрогон при каждом запуске.</p></div>
+      <div class="card"><span class="ico">🎯</span><h3>Ошибка ведёт к строке</h3>
+        <p>Упал скрипт — строка подсвечена, курсор на ней, а в консоли кликабельная ошибка
+          с номером. Больше не нужно искать, где именно сломалось.</p></div>
+      <div class="card"><span class="ico">📄</span><h3>Лицензия freeware</h3>
+        <p>Программа бесплатна для использования на любом числе своих компьютеров.
+          Переделывать её, распространять изменённые сборки и продавать нельзя —
+          полный текст в файле <code>LICENSE</code>.</p></div>
       <div class="card"><span class="ico">🖥</span><h3>Правильные мониторы</h3>
-        <p>Список размеров приведён к реальным компонентам игры: <code>1×1</code>, <code>2×1</code>,
+        <p>Список размеров — ровно компоненты игры: <code>1×1</code>, <code>2×1</code>,
           <code>2×2</code>, <code>3×1</code>, <code>3×2</code>, <code>3×3</code>, <code>5×3</code>,
-          <code>9×5</code>. Подпись «ширина × высота» теперь всегда совпадает с разрешением
-          (1 блок = 32 px).</p></div>
+          <code>9×5</code>. Подпись «ширина × высота» совпадает с разрешением (1 блок = 32 px).</p></div>
       <div class="card"><span class="ico">⬆️</span><h3>Автообновление</h3>
         <p>Настольная версия сама проверяет обновления на GitHub при запуске и предлагает
-          скачать новую версию — переустанавливать вручную больше не нужно. Проверку можно
-          отключить в «Настройках», там же есть кнопка «Проверить обновления».</p></div>
-      <div class="card"><span class="ico">↔️</span><h3>Ширина панели — мышью</h3>
-        <p>Границу между редактором и монитором/композитом можно тянуть: узкая панель для
-          кода, широкая — для монитора. Двойной клик по границе возвращает исходную ширину,
-          выбранная ширина запоминается.</p></div>
-      <div class="card"><span class="ico">📈</span><h3>Анимация входных чисел</h3>
-        <p>У числового входа композита — галочка «анимация»: задаются минимум, максимум и
-          шаг за тик, значение ходит маятником, пока скрипт запущен. Без галочки в код идёт
-          точное число, как раньше.</p></div>
-      <div class="card"><span class="ico">🛠</span><h3>Проверки</h3>
-        <p>Новые автопроверки <code>check-anim</code> и <code>check-update</code>: анимация
-          входов, ширина панели и блок обновлений проверяются без ручного прогона.</p></div>
+          скачать новую — переустанавливать вручную не нужно. Отключается в «Настройках».</p></div>
     </div>
   </div>
 </section>
@@ -227,7 +230,7 @@
     <div>
       <h2>Установка (Windows)</h2>
       <ol class="steps">
-        <li>Скачайте установщик <code>Luna-IDE-Setup-1.3.1.exe</code>.</li>
+        <li>Скачайте установщик <code>Luna-IDE-Setup-1.4.0.exe</code>.</li>
         <li>Запустите его и выберите папку установки. Ярлык появится на рабочем столе.</li>
         <li>Откройте «Луна IDE», напишите скрипт и нажмите <b>▶ Запустить</b> (или <code>F5</code>).</li>
       </ol>
@@ -267,7 +270,7 @@
 <section class="cta" id="download">
   <div class="wrap">
     <h2>Скачать Луна IDE</h2>
-    <p class="muted">Версия 1.3.1 · Windows 10/11 (x64) · бесплатно</p>
+    <p class="muted">Версия 1.4.0 · Windows 10/11 (x64) · бесплатно</p>
     <div class="btns">
       <a class="btn primary" id="dlWin2" href="#download">⬇ Скачать для Windows</a>
       <a class="btn" id="dlWeb3" href="#download">🌐 Открыть веб-версию</a>
@@ -278,10 +281,12 @@
 
 <footer>
   <div class="wrap">
-    <p><b>Луна IDE</b> · автор: СтаричЁк · версия 1.3.1</p>
+    <p><b>Луна IDE</b> · автор: СтаричЁк · версия 1.4.0 · лицензия freeware</p>
     <p>Новости и обновления — Telegram-канал: <a class="tg-link" href="https://t.me/luna_ide" target="_blank" rel="noopener">t.me/luna_ide</a></p>
     <p>Неофициальный инструмент для игры Stormworks: Build and Rescue. Все права на игру
       принадлежат её разработчикам.</p>
+    <p class="muted small">Сайт использует cookies сервиса Яндекс.Метрика, чтобы считать посещения.
+      Данные обезличены, в приложении никакой аналитики нет.</p>
   </div>
 </footer>
 
@@ -299,7 +304,7 @@ var LINKS = {
   itchUrl: '',          // например: 'https://starichek.itch.io/luna-ide'
   releaseUrl: '',       // прямая ссылка на установщик в GitHub Releases (можно не заполнять)
   webUrl:  'app/index.html',
-  installer: 'Luna-IDE-Setup-1.3.1.exe',   // имя файла в той же папке, что и лендинг
+  installer: 'Luna-IDE-Setup-1.4.0.exe',   // имя файла в той же папке, что и лендинг
   tgUrl:   'https://t.me/luna_ide'          // Telegram-канал проекта
 };
 
@@ -385,6 +390,31 @@ if (LINKS.itchUrl) {
     setDownloadSoon();
   }
 }
+</script>
+
+<!-- ===== Яндекс.Метрика: статистика посещений =====
+     Включится, когда ниже указан номер счётчика. Создать его: metrika.yandex.ru →
+     «Добавить счётчик» → сайт https://bossmen007.github.io/Luna-IDE-LUA-Stormworks/ →
+     скопировать номер и вписать вместо 0. Приложение аналитику не собирает. -->
+<script>
+  var LUNA_METRIKA_ID = 0;   // например 98765432; 0 = счётчик выключен
+  (function () {
+    if (!LUNA_METRIKA_ID) return;
+    (function (m, e, t, r, i, k, a) {
+      m[i] = m[i] || function () { (m[i].a = m[i].a || []).push(arguments); };
+      m[i].l = 1 * new Date();
+      for (var j = 0; j < e.scripts.length; j++) if (e.scripts[j].src === r) return;
+      k = e.createElement(t); a = e.getElementsByTagName(t)[0];
+      k.async = 1; k.src = r; a.parentNode.insertBefore(k, a);
+    })(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js', 'ym');
+    ym(LUNA_METRIKA_ID, 'init', {
+      clickmap: true,
+      trackLinks: true,
+      accurateTrackBounce: true,
+      webvisor: false,
+      trackHash: true
+    });
+  })();
 </script>
 </body>
 </html>

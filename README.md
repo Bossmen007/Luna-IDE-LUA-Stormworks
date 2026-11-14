@@ -31,7 +31,7 @@
 
 Отдельное окно со своим меню, без браузера и адресной строки.
 
-1. Установить: запустить `release\Luna-IDE-Setup-1.3.1.exe` и следовать шагам
+1. Установить: запустить `release\Luna-IDE-Setup-1.4.0.exe` и следовать шагам
    (без установки — `dist\Luna IDE-win32-x64\Luna IDE.exe`).
 2. Ярлык **«Луна IDE»** на рабочем столе — двойной клик.
 3. Напишите скрипт и нажмите **▶ Запустить** (или `F5`).
@@ -56,7 +56,7 @@ npm install            :: один раз (Electron ~110 МБ + electron-builder
 npm start              :: запуск в режиме разработки
 npm ci                 :: чистая установка по package-lock.json (для сборки на GitHub)
 
-npm run installer      :: установщик      -> release\Luna-IDE-Setup-1.3.1.exe
+npm run installer      :: установщик      -> release\Luna-IDE-Setup-1.4.0.exe
 npm run dist           :: portable-папка  -> dist\Luna IDE-win32-x64\Luna IDE.exe
 npm run shots          :: скриншоты интерфейса   -> publish\shots\
 npm run images         :: обложки нужных размеров
@@ -126,7 +126,7 @@ docs/               — страница проекта для GitHub Pages (+ d
 .github/workflows/  — автосборка установщика при создании релиза
 release/            — установщик (npm run installer)
 publish/            — файлы для публикации (см. publish/README.md)
-LICENSE             — лицензия MIT
+LICENSE             — лицензия (freeware)
 ```
 
 ## Экранный текст — только латиницей
@@ -146,7 +146,9 @@ LICENSE             — лицензия MIT
 
 ## Лицензия
 
-[MIT](LICENSE) — используйте, изменяйте и распространяйте свободно.
+**Freeware** — программой можно пользоваться бесплатно (в том числе на нескольких
+компьютерах), но переделывать её, распространять изменённые сборки и продавать нельзя.
+Полный текст — [LICENSE](LICENSE).
 Игра Stormworks: Build and Rescue и её API принадлежат их разработчикам;
 этот проект — неофициальный инструмент сообщества.
 
